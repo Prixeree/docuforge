@@ -141,6 +141,8 @@ function pickPexelsFile(videoFiles, quality = 'hd') {
   return mp4s[0];
 }
 
+export const DEFAULT_PEXELS_KEY = 'D00l45nGUuI75vKZIXCksLpu2hiOJZtFkZ1XADrgLMBykTzTbLqJ57UQ';
+
 /**
  * Fetches from Pexels API (via proxy or direct key)
  */
@@ -148,12 +150,13 @@ async function fetchPexels(query, { proxyUrl, apiKey, quality = 'hd' }) {
   try {
     let url = '';
     const headers = {};
+    const activeKey = apiKey || DEFAULT_PEXELS_KEY;
 
     if (proxyUrl) {
       url = `${proxyUrl.replace(/\/+$/, '')}/search?service=pexels&query=${encodeURIComponent(query)}&orientation=portrait&per_page=10`;
-    } else if (apiKey) {
+    } else if (activeKey) {
       url = `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&orientation=portrait&per_page=10`;
-      headers['Authorization'] = apiKey;
+      headers['Authorization'] = activeKey;
     } else {
       return [];
     }

@@ -296,7 +296,7 @@ async function initApp() {
     proxyInput.addEventListener('change', () => localStorage.setItem('docuforge_stock_proxy', proxyInput.value.trim()));
   }
   if (pexelsInput) {
-    pexelsInput.value = localStorage.getItem('docuforge_pexels_key') || '';
+    pexelsInput.value = localStorage.getItem('docuforge_pexels_key') || 'D00l45nGUuI75vKZIXCksLpu2hiOJZtFkZ1XADrgLMBykTzTbLqJ57UQ';
     pexelsInput.addEventListener('change', () => localStorage.setItem('docuforge_pexels_key', pexelsInput.value.trim()));
   }
   if (pixabayInput) {
