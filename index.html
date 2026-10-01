@@ -414,12 +414,41 @@
           <label>Asset Base URL (Local / GitHub Pages / Cloudflare R2)</label>
           <input type="text" id="asset-base-url" value="../docuforge-assets" placeholder="../docuforge-assets or https://assets.yourdomain.com">
         </div>
+
+        <div style="grid-column: 1 / -1; margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--border);">
+          <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #38BDF8;">🎥 Live Stock Footage API (Modes 1-6: Pexels & Pixabay)</h4>
+          <div class="grid-2">
+            <div>
+              <label>Cloudflare Worker Proxy URL (Default / No-Key Mode)</label>
+              <input type="text" id="stock-proxy-url" placeholder="https://docuforge-stock-proxy.workers.dev (optional)">
+            </div>
+            <div>
+              <label>Direct Pexels API Key (Fallback)</label>
+              <input type="password" id="pexels-api-key" placeholder="Pexels API Key (stored in localStorage)">
+            </div>
+          </div>
+          <div style="margin-top: 8px;">
+            <label>Direct Pixabay API Key (Fallback)</label>
+            <input type="password" id="pixabay-api-key" placeholder="Pixabay API Key (stored in localStorage)">
+          </div>
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
+            Leave blank to use the default proxy or automatic procedural motion backgrounds. Keys are stored only in your browser's <code>localStorage</code>.
+          </p>
+        </div>
       </div>
 
-      <div style="margin-top: 16px;">
-        <label>Background Clip Selection</label>
+      <div id="clip-gallery-wrapper" style="margin-top: 16px;">
+        <label id="clip-gallery-label">Background Gameplay Clip (Reddit Mode)</label>
         <div class="clip-gallery" id="clip-gallery">
           <!-- Clip Cards Injected Here -->
+        </div>
+      </div>
+
+      <!-- Live Scene Stock Swapper (For Modes 1-6) -->
+      <div id="stock-swapper-wrapper" style="display:none; margin-top: 16px;">
+        <label>Live Stock Clips by Scene (Click "Swap Clip" to cycle candidates)</label>
+        <div id="scene-stock-cards" style="display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px;">
+          <!-- Dynamically populated scene cards -->
         </div>
       </div>
     </div>
@@ -442,6 +471,21 @@
       <a id="download-link" class="btn-download" download="docuforge-video.mp4">💾 Download MP4</a>
     </div>
   </div>
+
+  <!-- Stock Warning Banner -->
+  <div id="stock-warning-banner" class="hw-probe-banner" style="display: none; background: rgba(245, 158, 11, 0.15); border: 1px solid var(--warning); color: #FCD34D;">
+    ⚠️ Stock footage API rate-limited or unavailable. Rendered using high-contrast procedural gradient motion.
+  </div>
+
+  <footer style="margin-top: 48px; padding: 24px 0; border-top: 1px solid var(--border); text-align: center; font-size: 0.8rem; color: var(--text-muted); line-height: 1.6;">
+    <p style="margin-bottom: 6px;">
+      <strong>DocuForge</strong> &bull; 100% In-Browser Open Source Short-Form Video Generator &bull; MIT License
+    </p>
+    <p>
+      Stock video footage provided by <a href="https://www.pexels.com" target="_blank" rel="noopener" style="color: #38BDF8;">Pexels</a> and <a href="https://pixabay.com" target="_blank" rel="noopener" style="color: #38BDF8;">Pixabay</a>.<br>
+      Background music by Kevin MacLeod (<a href="https://incompetech.com" target="_blank" rel="noopener" style="color: #38BDF8;">incompetech.com</a>, CC-BY 4.0) and <a href="https://pixabay.com" target="_blank" rel="noopener" style="color: #38BDF8;">Pixabay</a>.
+    </p>
+  </footer>
 
   <script type="module" src="src/app.js"></script>
 </body>

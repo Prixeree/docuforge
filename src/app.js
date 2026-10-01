@@ -7,6 +7,7 @@ import { loadManifest, filterClipsByMode, selectClipWindow, createRangeVideo, se
 import { initTTS, generateAllScenes } from '../core/tts.js';
 import { processVoiceChain, mixAudio, encodeAAC } from '../core/audio.js';
 import { createMuxer, addVideoChunk, addAudioChunk, finalizeMuxer } from '../core/mux.js';
+import { searchStockClips } from '../core/stock.js';
 
 // Mode Generators
 import { parseViralInput, buildViralSceneGraph } from '../modes/viral/mode.js';
@@ -285,6 +286,24 @@ async function initApp() {
     });
   }
 
+  // Restore saved stock proxy / API keys
+  const proxyInput = document.getElementById('stock-proxy-url');
+  const pexelsInput = document.getElementById('pexels-api-key');
+  const pixabayInput = document.getElementById('pixabay-api-key');
+
+  if (proxyInput) {
+    proxyInput.value = localStorage.getItem('docuforge_stock_proxy') || '';
+    proxyInput.addEventListener('change', () => localStorage.setItem('docuforge_stock_proxy', proxyInput.value.trim()));
+  }
+  if (pexelsInput) {
+    pexelsInput.value = localStorage.getItem('docuforge_pexels_key') || '';
+    pexelsInput.addEventListener('change', () => localStorage.setItem('docuforge_pexels_key', pexelsInput.value.trim()));
+  }
+  if (pixabayInput) {
+    pixabayInput.value = localStorage.getItem('docuforge_pixabay_key') || '';
+    pixabayInput.addEventListener('change', () => localStorage.setItem('docuforge_pixabay_key', pixabayInput.value.trim()));
+  }
+
   // Probe Hardware
   const hw = await probeHardwareEncoding();
   const banner = document.getElementById('hw-banner');
@@ -323,6 +342,45 @@ function switchMode(mode) {
   document.getElementById('mode-fields').innerHTML = cfg.renderForm();
   document.getElementById('sub-preset').value = cfg.defaultSubtitle;
   document.getElementById('music-select').value = cfg.defaultMusic;
+
+  const isReddit = (mode === 'reddit-story');
+  const galleryWrap = document.getElementById('clip-gallery-wrapper');
+  const swapperWrap = document.getElementById('stock-swapper-wrapper');
+  if (galleryWrap) galleryWrap.style.display = isReddit ? 'block' : 'none';
+  if (swapperWrap) swapperWrap.style.display = isReddit ? 'none' : 'block';
+}
+
+function renderSceneStockCard(container, sceneIndex, sceneNode) {
+  if (!sceneNode.stockCandidates || sceneNode.stockCandidates.length === 0) return;
+  const chosen = sceneNode.stockCandidates[sceneNode.stockIndex || 0];
+  let card = document.getElementById(`stock-card-${sceneIndex}`);
+  const isNew = !card;
+
+  if (isNew) {
+    card = document.createElement('div');
+    card.id = `stock-card-${sceneIndex}`;
+    card.style.cssText = 'min-width: 140px; max-width: 160px; background: #0F172A; border: 1px solid var(--border); border-radius: 8px; padding: 8px; text-align: center; flex-shrink: 0;';
+    container.appendChild(card);
+  }
+
+  card.innerHTML = `
+    <div style="font-size: 0.75rem; font-weight: 700; color: #94A3B8; margin-bottom: 4px;">Scene ${sceneIndex + 1}</div>
+    <img src="${chosen.thumbnail || ''}" style="width: 100%; height: 85px; object-fit: cover; border-radius: 4px; display: block; margin-bottom: 6px;" alt="Scene ${sceneIndex + 1}">
+    <div style="font-size: 0.7rem; color: #E2E8F0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 6px;" title="${chosen.title}">
+      ${chosen.source.toUpperCase()}: ${chosen.title.slice(0, 15)}
+    </div>
+    <button type="button" class="btn-swap-clip" style="width: 100%; padding: 4px 6px; font-size: 0.75rem; background: #1E293B; border: 1px solid #38BDF8; color: #38BDF8; border-radius: 4px; cursor: pointer; font-weight: 600;">
+      🔀 Swap Clip (${(sceneNode.stockIndex || 0) + 1}/${sceneNode.stockCandidates.length})
+    </button>
+  `;
+
+  card.querySelector('.btn-swap-clip').addEventListener('click', (ev) => {
+    ev.stopPropagation();
+    sceneNode.stockIndex = ((sceneNode.stockIndex || 0) + 1) % sceneNode.stockCandidates.length;
+    const nextCandidate = sceneNode.stockCandidates[sceneNode.stockIndex];
+    sceneNode.layers[0].src = nextCandidate.url;
+    renderSceneStockCard(container, sceneIndex, sceneNode);
+  });
 }
 
 function renderGallery(clips) {
@@ -400,13 +458,27 @@ async function handleGenerate() {
 
     updateProgress(0.35, 'Step 2/5: Processing Voice DSP & Background Music...');
 
-    // 2. Select Clip
-    const clips = filterClipsByMode(manifest, currentMode);
-    const chosenClip = (selectedClipId !== 'auto') 
-      ? (manifest.clips.find(c => c.id === selectedClipId) || clips[0])
-      : clips[Math.floor(Math.random() * clips.length)];
+    // 2. Select Clip / Live Stock Footage
+    let clipWindow = null;
+    const quality = document.getElementById('quality-select').value;
+    const width = quality === 'draft' ? 540 : 720;
+    const height = quality === 'draft' ? 960 : 1280;
 
-    const clipWindow = selectClipWindow(chosenClip, audioData.duration + 2.0);
+    if (currentMode === 'reddit-story') {
+      const clips = filterClipsByMode(manifest, 'reddit-story');
+      const chosenClip = (selectedClipId !== 'auto') 
+        ? (manifest.clips.find(c => c.id === selectedClipId) || clips[0])
+        : clips[Math.floor(Math.random() * clips.length)];
+      clipWindow = selectClipWindow(chosenClip, audioData.duration + 2.0);
+    } else {
+      clipWindow = {
+        clipId: 'live-stock',
+        url: '',
+        draftUrl: '',
+        startTime: 0,
+        duration: audioData.duration + 5
+      };
+    }
 
     // 3. Audio Mix & Ducking
     const processedVoice = await processVoiceChain(audioData.samples, audioData.sampleRate);
@@ -435,16 +507,63 @@ async function handleGenerate() {
     updateProgress(0.55, 'Step 3/5: Building Declarative Scene Graph...');
 
     // 4. Build Scene Graph
-    const quality = document.getElementById('quality-select').value;
-    const width = quality === 'draft' ? 540 : 720;
-    const height = quality === 'draft' ? 960 : 1280;
-
     const graph = cfg.buildGraph(data, audioData, clipWindow, {
       width,
       height,
       quality,
       subtitlePreset: document.getElementById('sub-preset').value
     });
+
+    // If stock mode (not reddit-story), query and match live stock clips per scene
+    if (currentMode !== 'reddit-story') {
+      updateProgress(0.60, 'Step 3/5: Searching & Scoring Live Stock Footage (Pexels / Pixabay)...');
+
+      const proxyUrl = document.getElementById('stock-proxy-url')?.value.trim() || null;
+      const apiKeys = {
+        pexels: document.getElementById('pexels-api-key')?.value.trim() || null,
+        pixabay: document.getElementById('pixabay-api-key')?.value.trim() || null
+      };
+
+      const stockCards = document.getElementById('scene-stock-cards');
+      if (stockCards) stockCards.innerHTML = '';
+      let anyFallback = false;
+
+      for (let i = 0; i < graph.scenes.length; i++) {
+        const sc = graph.scenes[i];
+        const sceneText = sc.layers.find(l => l.type === 'subtitles')?.words?.map(w => w.text).join(' ') || data.hook || '';
+
+        const stockRes = await searchStockClips({
+          mode: currentMode,
+          text: sceneText,
+          minDuration: sc.duration,
+          quality,
+          proxyUrl,
+          apiKeys
+        });
+
+        if (stockRes.isFallback || !stockRes.selected?.url) {
+          anyFallback = true;
+          sc.isProcedural = true;
+          sc.mode = currentMode;
+        } else {
+          sc.stockCandidates = stockRes.candidates;
+          sc.stockIndex = 0;
+          sc.isProcedural = false;
+          sc.mode = currentMode;
+          sc.layers[0].src = stockRes.selected.url;
+          sc.layers[0].startTime = 0;
+
+          if (stockCards) {
+            renderSceneStockCard(stockCards, i, sc);
+          }
+        }
+      }
+
+      const warningBanner = document.getElementById('stock-warning-banner');
+      if (warningBanner) {
+        warningBanner.style.display = anyFallback ? 'block' : 'none';
+      }
+    }
 
     updateProgress(0.70, 'Step 4/5: Offline Video Encoding (WebCodecs)...');
 
@@ -457,17 +576,25 @@ async function handleGenerate() {
       renderWorker.onmessage = async (e) => {
         if (e.data.type === 'ready') {
           try {
-            // Prepare background video element
-            const videoEl = createRangeVideo(getAssetUrl(graph.scenes[0].layers[0].src));
-            await new Promise((r, rej) => {
-              videoEl.onloadedmetadata = r;
-              videoEl.onerror = rej;
-            });
-
             for (let i = 0; i < graph.scenes.length; i++) {
               const sc = graph.scenes[i];
-              await seekVideoFrame(videoEl, sc.layers[0].startTime);
-              const bitmap = await createImageBitmap(videoEl);
+              let bitmap = null;
+
+              if (!sc.isProcedural && sc.layers[0]?.src) {
+                try {
+                  const videoEl = createRangeVideo(getAssetUrl(sc.layers[0].src));
+                  await new Promise((r, rej) => {
+                    videoEl.onloadedmetadata = r;
+                    videoEl.onerror = () => rej(new Error('Video load failed'));
+                  });
+                  await seekVideoFrame(videoEl, sc.layers[0].startTime || 0);
+                  bitmap = await createImageBitmap(videoEl);
+                } catch (vidErr) {
+                  console.warn(`[render] Video load failed for scene ${i + 1}, falling back to procedural:`, vidErr.message);
+                  sc.isProcedural = true;
+                  sc.mode = currentMode;
+                }
+              }
 
               const sceneWait = new Promise((res) => {
                 pendingSceneResolvers.set(i, res);
@@ -481,7 +608,7 @@ async function handleGenerate() {
                 bitmap,
                 subtitleWords: sc.layers.find(l => l.type === 'subtitles')?.words || [],
                 subtitlePreset: document.getElementById('sub-preset').value
-              }, [bitmap]);
+              }, bitmap ? [bitmap] : []);
 
               await sceneWait;
             }

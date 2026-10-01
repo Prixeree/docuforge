@@ -16,6 +16,7 @@ import { getTransition } from './transitions.js';
 import { applyKenBurns, createKenBurnsEffect } from './kenburns.js';
 import { drawKineticSubtitles } from './subtitles.js';
 import { renderLayer } from './scene-graph.js';
+import { drawProceduralBackground } from './stock.js';
 
 let canvas, ctx;
 let transCanvas1, transCtx1, transCanvas2, transCtx2;
@@ -144,12 +145,20 @@ async function renderSceneNode(msg) {
       // Render Scene 1 to transCanvas1
       transCtx1.fillStyle = '#000000';
       transCtx1.fillRect(0, 0, width, height);
-      if (bitmap) applyKenBurns(transCtx1, bitmap, sceneProgress, width, height, kbEffect);
+      if (bitmap) {
+        applyKenBurns(transCtx1, bitmap, sceneProgress, width, height, kbEffect);
+      } else {
+        drawProceduralBackground(transCtx1, scene.mode || 'viral', sceneTime, width, height);
+      }
 
       // Render Scene 2 to transCanvas2
       transCtx2.fillStyle = '#000000';
       transCtx2.fillRect(0, 0, width, height);
-      if (nextBitmap) applyKenBurns(transCtx2, nextBitmap, transProgress * 0.1, width, height, nextKbEffect);
+      if (nextBitmap) {
+        applyKenBurns(transCtx2, nextBitmap, transProgress * 0.1, width, height, nextKbEffect);
+      } else {
+        drawProceduralBackground(transCtx2, nextScene?.mode || scene.mode || 'viral', sceneTime, width, height);
+      }
 
       // Apply transition
       const transFn = getTransition(scene.transition.type || 'crossfade');
@@ -157,7 +166,11 @@ async function renderSceneNode(msg) {
     } else {
       ctx.fillStyle = '#000000';
       ctx.fillRect(0, 0, width, height);
-      if (bitmap) applyKenBurns(ctx, bitmap, sceneProgress, width, height, kbEffect);
+      if (bitmap) {
+        applyKenBurns(ctx, bitmap, sceneProgress, width, height, kbEffect);
+      } else {
+        drawProceduralBackground(ctx, scene.mode || 'viral', sceneTime, width, height);
+      }
     }
 
     // Render Scene Layers (sprites, badges, shapes)

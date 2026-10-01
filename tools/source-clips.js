@@ -31,77 +31,17 @@ const MANIFEST_FILE = path.join(ASSETS_DIR, 'manifest.json');
 
 fs.mkdirSync(REVIEW_DIR, { recursive: true });
 
-// Target queries per mode
+// Target queries for offline continuous gameplay (Reddit Story pipeline only)
 export const MODE_TARGETS = {
   'reddit-story': {
-    targetMinutes: 25,
+    targetMinutes: 30,
     queries: [
       'minecraft parkour no copyright gameplay',
       'gta 5 mega ramp no copyright gameplay',
       'csgo surf no copyright gameplay 4k',
       'subway surfers no copyright gameplay 60fps'
     ],
-    defaultTags: ['gameplay', 'endless', 'parkour', 'background']
-  },
-  'viral': {
-    targetMinutes: 25,
-    queries: [
-      'satisfying slime kinetic sand loop no copyright 4k',
-      'tokyo city timelapse no copyright 4k',
-      'abstract 3d motion loop no copyright 4k',
-      'satisfying machines factory loop no copyright'
-    ],
-    defaultTags: ['satisfying', 'timelapse', 'viral', 'abstract']
-  },
-  'explainer': {
-    targetMinutes: 25,
-    queries: [
-      'volcano lava flow 4k no copyright nature',
-      'microscopic crystal minerals 4k creative commons',
-      'circuit board robotics technology b roll no copyright',
-      'geology rocks ocean coast b roll creative commons 4k'
-    ],
-    defaultTags: ['geology', 'technology', 'nature', 'documentary', 'b-roll']
-  },
-  'myth-vs-fact': {
-    targetMinutes: 25,
-    queries: [
-      'dark storm clouds lightning timelapse creative commons 4k',
-      'smoke in black background slow motion creative commons',
-      'galaxy deep space stars nebula nasa creative commons',
-      'mysterious fog dark forest drone creative commons'
-    ],
-    defaultTags: ['dramatic', 'smoke', 'space', 'clouds', 'mysterious']
-  },
-  'quote-motivational': {
-    targetMinutes: 25,
-    queries: [
-      'mountain sunrise clouds timelapse creative commons 4k',
-      'deep forest sunlight trees slow motion creative commons',
-      'ocean waves shore golden hour creative commons 4k',
-      'foggy lake peaceful reflection creative commons'
-    ],
-    defaultTags: ['nature', 'peaceful', 'sunrise', 'atmospheric', 'slow-motion']
-  },
-  'quiz-trivia': {
-    targetMinutes: 25,
-    queries: [
-      'neon particles abstract tunnel loop creative commons 4k',
-      'colorful geometric background motion loop creative commons',
-      'cyberpunk neon grid abstract loop creative commons',
-      'glowing bokeh particles background loop creative commons'
-    ],
-    defaultTags: ['neon', 'particles', 'colorful', 'abstract', 'quiz']
-  },
-  'would-you-rather': {
-    targetMinutes: 25,
-    queries: [
-      'colorful fluid liquid abstract motion loop creative commons 4k',
-      'city traffic night hyperlapse creative commons',
-      'roller coaster pov creative commons 4k',
-      'energetic sports action drone creative commons'
-    ],
-    defaultTags: ['energetic', 'action', 'motion', 'city', 'vibrant']
+    defaultTags: ['gameplay', 'endless', 'parkour', 'background', 'reddit-story']
   }
 };
 

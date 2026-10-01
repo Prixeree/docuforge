@@ -1,0 +1,8 @@
+name = "docuforge-stock-proxy"
+main = "worker.js"
+compatibility_date = "2024-01-01"
+
+# Environment secrets required (never committed to git):
+# Set with:
+#   npx wrangler secret put PEXELS_API_KEY
+#   npx wrangler secret put PIXABAY_API_KEY
