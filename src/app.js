@@ -8,6 +8,7 @@ import { initTTS, generateAllScenes } from '../core/tts.js';
 import { processVoiceChain, mixAudio, encodeAAC } from '../core/audio.js';
 import { createMuxer, addVideoChunk, addAudioChunk, finalizeMuxer } from '../core/mux.js';
 import { searchStockClips } from '../core/stock.js';
+import { generateScript } from '../core/script-generator.js';
 
 // Mode Generators
 import { parseViralInput, buildViralSceneGraph } from '../modes/viral/mode.js';
@@ -272,6 +273,144 @@ async function reloadManifest() {
   }
 }
 
+function updateScriptModeBadge() {
+  const geminiKey = localStorage.getItem('docuforge_gemini_key');
+  const badge = document.getElementById('script-mode-badge');
+  if (!badge) return;
+
+  if (geminiKey && geminiKey.trim()) {
+    badge.textContent = 'Gemini AI (BYOK Active)';
+    badge.style.background = 'rgba(129, 140, 248, 0.2)';
+    badge.style.color = '#818CF8';
+    badge.style.borderColor = 'rgba(129, 140, 248, 0.4)';
+  } else {
+    badge.textContent = 'Autonomous Engine (Zero-Key Active)';
+    badge.style.background = 'rgba(16, 185, 129, 0.2)';
+    badge.style.color = '#34D399';
+    badge.style.borderColor = 'rgba(16, 185, 129, 0.4)';
+  }
+}
+
+function populateModeForm(mode, data) {
+  if (!data) return;
+  switch (mode) {
+    case 'viral':
+      if (document.getElementById('viral-hook')) document.getElementById('viral-hook').value = data.hook || '';
+      if (document.getElementById('viral-facts')) {
+        document.getElementById('viral-facts').value = Array.isArray(data.facts) ? data.facts.join('\n') : (data.facts || '');
+      }
+      if (document.getElementById('viral-cta')) document.getElementById('viral-cta').value = data.cta || '';
+      break;
+
+    case 'reddit-story':
+      if (document.getElementById('reddit-sub')) document.getElementById('reddit-sub').value = data.subreddit || 'r/tifu';
+      if (document.getElementById('reddit-user')) document.getElementById('reddit-user').value = data.username || 'u/throwaway_curious';
+      if (document.getElementById('reddit-title')) document.getElementById('reddit-title').value = data.title || '';
+      if (document.getElementById('reddit-story')) document.getElementById('reddit-story').value = data.story || '';
+      break;
+
+    case 'explainer':
+      if (document.getElementById('exp-title')) document.getElementById('exp-title').value = data.title || '';
+      if (Array.isArray(data.items)) {
+        const item3 = data.items.find(i => i.rank === 3) || data.items[2] || data.items[0];
+        const item2 = data.items.find(i => i.rank === 2) || data.items[1] || data.items[0];
+        const item1 = data.items.find(i => i.rank === 1) || data.items[0];
+        if (document.getElementById('exp-r3') && item3) document.getElementById('exp-r3').value = item3.line || '';
+        if (document.getElementById('exp-r2') && item2) document.getElementById('exp-r2').value = item2.line || '';
+        if (document.getElementById('exp-r1') && item1) document.getElementById('exp-r1').value = item1.line || '';
+      }
+      break;
+
+    case 'myth-vs-fact':
+      if (document.getElementById('mvf-myth')) document.getElementById('mvf-myth').value = data.myth || '';
+      if (document.getElementById('mvf-fact')) document.getElementById('mvf-fact').value = data.fact || '';
+      if (document.getElementById('mvf-exp')) document.getElementById('mvf-exp').value = data.explanation || '';
+      break;
+
+    case 'quote-motivational':
+      if (document.getElementById('quote-text')) document.getElementById('quote-text').value = data.quote || '';
+      if (document.getElementById('quote-author')) document.getElementById('quote-author').value = data.author || '';
+      break;
+
+    case 'quiz-trivia':
+      if (document.getElementById('quiz-q')) document.getElementById('quiz-q').value = data.question || '';
+      if (Array.isArray(data.options)) {
+        for (let i = 0; i < 4; i++) {
+          const el = document.getElementById(`quiz-opt-${i}`);
+          if (el && data.options[i] !== undefined) el.value = data.options[i];
+        }
+      }
+      if (document.getElementById('quiz-fact')) document.getElementById('quiz-fact').value = data.funFact || '';
+      break;
+
+    case 'would-you-rather':
+      if (document.getElementById('wyr-a')) document.getElementById('wyr-a').value = data.optionA || '';
+      if (document.getElementById('wyr-b')) document.getElementById('wyr-b').value = data.optionB || '';
+      if (document.getElementById('wyr-vote-a') && data.voteA !== undefined) document.getElementById('wyr-vote-a').value = data.voteA;
+      if (document.getElementById('wyr-vote-b') && data.voteB !== undefined) document.getElementById('wyr-vote-b').value = data.voteB;
+      break;
+  }
+}
+
+async function handleScriptGeneration(isRandom = false) {
+  const topicInput = document.getElementById('script-topic-input');
+  const geminiInput = document.getElementById('gemini-api-key');
+  const statusEl = document.getElementById('script-gen-status');
+  const btnAuto = document.getElementById('btn-auto-script');
+  const btnRandom = document.getElementById('btn-random-script');
+
+  const topic = isRandom ? '' : (topicInput ? topicInput.value.trim() : '');
+  if (isRandom && topicInput) {
+    topicInput.value = '';
+  }
+
+  const geminiApiKey = (geminiInput && geminiInput.value.trim()) || localStorage.getItem('docuforge_gemini_key') || '';
+
+  if (statusEl) {
+    statusEl.textContent = '⚡ Synthesizing script...';
+    statusEl.style.color = '#38BDF8';
+  }
+  if (btnAuto) btnAuto.disabled = true;
+  if (btnRandom) btnRandom.disabled = true;
+
+  try {
+    const res = await generateScript({
+      mode: currentMode,
+      topic,
+      geminiApiKey
+    });
+
+    populateModeForm(currentMode, res.data);
+
+    const fieldsArea = document.getElementById('mode-fields');
+    if (fieldsArea) {
+      fieldsArea.style.transition = 'background 0.3s ease';
+      fieldsArea.style.background = 'rgba(16, 185, 129, 0.08)';
+      setTimeout(() => { fieldsArea.style.background = 'transparent'; }, 600);
+    }
+
+    if (statusEl) {
+      statusEl.textContent = (res.source === 'gemini')
+        ? '✨ AI Script generated via Gemini API (BYOK)!'
+        : '⚡ Autonomous script generated!';
+      statusEl.style.color = '#10B981';
+      setTimeout(() => {
+        statusEl.textContent = 'Ready to generate';
+        statusEl.style.color = '#9CA3AF';
+      }, 4000);
+    }
+  } catch (err) {
+    console.error('[ScriptGen] Generation error:', err);
+    if (statusEl) {
+      statusEl.textContent = `Error: ${err.message}`;
+      statusEl.style.color = '#EF4444';
+    }
+  } finally {
+    if (btnAuto) btnAuto.disabled = false;
+    if (btnRandom) btnRandom.disabled = false;
+  }
+}
+
 async function initApp() {
   // Restore saved asset base URL if present
   const savedBase = localStorage.getItem('docuforge_asset_base');
@@ -290,6 +429,8 @@ async function initApp() {
   const proxyInput = document.getElementById('stock-proxy-url');
   const pexelsInput = document.getElementById('pexels-api-key');
   const pixabayInput = document.getElementById('pixabay-api-key');
+  const geminiInput = document.getElementById('gemini-api-key');
+  const drawerGeminiInput = document.getElementById('drawer-gemini-key');
 
   if (proxyInput) {
     proxyInput.value = localStorage.getItem('docuforge_stock_proxy') || '';
@@ -302,6 +443,43 @@ async function initApp() {
   if (pixabayInput) {
     pixabayInput.value = localStorage.getItem('docuforge_pixabay_key') || '';
     pixabayInput.addEventListener('change', () => localStorage.setItem('docuforge_pixabay_key', pixabayInput.value.trim()));
+  }
+
+  // Sync Gemini BYOK Key across card and drawer
+  const savedGeminiKey = localStorage.getItem('docuforge_gemini_key') || '';
+  if (geminiInput) geminiInput.value = savedGeminiKey;
+  if (drawerGeminiInput) drawerGeminiInput.value = savedGeminiKey;
+
+  const handleGeminiKeyChange = (val) => {
+    const trimmed = (val || '').trim();
+    localStorage.setItem('docuforge_gemini_key', trimmed);
+    if (geminiInput) geminiInput.value = trimmed;
+    if (drawerGeminiInput) drawerGeminiInput.value = trimmed;
+    updateScriptModeBadge();
+  };
+
+  if (geminiInput) {
+    geminiInput.addEventListener('change', () => handleGeminiKeyChange(geminiInput.value));
+  }
+  if (drawerGeminiInput) {
+    drawerGeminiInput.addEventListener('change', () => handleGeminiKeyChange(drawerGeminiInput.value));
+  }
+  updateScriptModeBadge();
+
+  // Wire Script Studio Buttons
+  const btnAuto = document.getElementById('btn-auto-script');
+  const btnRandom = document.getElementById('btn-random-script');
+  const topicInput = document.getElementById('script-topic-input');
+
+  if (btnAuto) btnAuto.addEventListener('click', () => handleScriptGeneration(false));
+  if (btnRandom) btnRandom.addEventListener('click', () => handleScriptGeneration(true));
+  if (topicInput) {
+    topicInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleScriptGeneration(false);
+      }
+    });
   }
 
   // Probe Hardware
@@ -342,6 +520,20 @@ function switchMode(mode) {
   document.getElementById('mode-fields').innerHTML = cfg.renderForm();
   document.getElementById('sub-preset').value = cfg.defaultSubtitle;
   document.getElementById('music-select').value = cfg.defaultMusic;
+
+  const topicInput = document.getElementById('script-topic-input');
+  if (topicInput) {
+    const hints = {
+      'viral': 'e.g. Deep Ocean, Black Holes, Mind Tricks, Roman Concrete',
+      'reddit-story': 'e.g. Airport Trivia, Secret Room, Accidental Job, Road Trip',
+      'explainer': 'e.g. Deadliest Volcanoes, Rare Minerals, Deep Trenches',
+      'myth-vs-fact': 'e.g. 10% Brain Myth, Great Wall From Space, Goldfish Memory',
+      'quote-motivational': 'e.g. Stoic Resilience, Marcus Aurelius, Carl Sagan, Seneca',
+      'quiz-trivia': 'e.g. Solar System, Deep Sea Animals, Chemical Elements',
+      'would-you-rather': 'e.g. Future vs Past, Animal Speech, Superpowers'
+    };
+    topicInput.placeholder = `Type a topic for ${cfg.title} (${hints[mode] || 'leave blank for random'})`;
+  }
 
   const isReddit = (mode === 'reddit-story');
   const galleryWrap = document.getElementById('clip-gallery-wrapper');

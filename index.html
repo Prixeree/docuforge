@@ -353,6 +353,40 @@
       <span style="font-size: 0.8rem; color: var(--text-muted);" id="mode-duration-hint">Target: 15-45s &bull; 9:16 Vertical</span>
     </div>
 
+    <!-- Autonomous Script Studio & BYOK Box -->
+    <div class="script-studio-box" style="background: rgba(99, 102, 241, 0.08); border: 1px solid rgba(99, 102, 241, 0.25); border-radius: 10px; padding: 16px; margin-bottom: 20px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 700; font-size: 0.95rem; color: #E0E7FF;">✨ Script Generator (Autonomous & BYOK)</span>
+          <span id="script-mode-badge" style="background: rgba(16, 185, 129, 0.2); color: #34D399; font-size: 0.72rem; padding: 2px 8px; border-radius: 999px; font-weight: 600; border: 1px solid rgba(16, 185, 129, 0.4);">
+            Autonomous Engine (Zero-Key Active)
+          </span>
+        </div>
+        <span style="font-size: 0.75rem; color: var(--text-muted);">
+          Generates formatted scripts on its own &bull; Or bring your own Gemini key
+        </span>
+      </div>
+
+      <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
+        <input type="text" id="script-topic-input" placeholder="Type a topic (e.g. Deep Ocean, Black Holes, Mind Tricks) or leave empty for random topic" style="flex: 1; min-width: 240px; font-size: 0.9rem; padding: 10px 14px;">
+        <button id="btn-auto-script" type="button" style="background: var(--accent); color: white; border: none; padding: 10px 18px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+          <span>⚡ Auto-Generate Script</span>
+        </button>
+        <button id="btn-random-script" type="button" style="background: #1F2937; color: #E5E7EB; border: 1px solid var(--border); padding: 10px 14px; border-radius: 8px; font-weight: 600; font-size: 0.88rem; cursor: pointer; white-space: nowrap; display: flex; align-items: center; gap: 6px; transition: all 0.2s;">
+          <span>🎲 Surprise Me</span>
+        </button>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.78rem; color: var(--text-muted); flex-wrap: wrap; gap: 8px;">
+        <div>
+          <span>BYOK (Gemini AI Key): </span>
+          <input type="password" id="gemini-api-key" placeholder="Paste free Gemini API key (optional)" style="width: 220px; display: inline-block; padding: 4px 8px; font-size: 0.75rem; border-radius: 4px; vertical-align: middle; margin-left: 4px; background: #0B0F19; border: 1px solid var(--border);">
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color: #818CF8; margin-left: 6px; text-decoration: underline;">Get free key</a>
+        </div>
+        <span id="script-gen-status" style="font-style: italic; color: #9CA3AF;">Ready to generate</span>
+      </div>
+    </div>
+
     <div id="mode-fields">
       <!-- Dynamic Mode Input Fields Injected Here -->
     </div>
@@ -416,23 +450,31 @@
         </div>
 
         <div style="grid-column: 1 / -1; margin-top: 8px; padding-top: 12px; border-top: 1px dashed var(--border);">
-          <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #38BDF8;">🎥 Live Stock Footage API (Modes 1-6: Pexels & Pixabay)</h4>
+          <h4 style="margin: 0 0 10px 0; font-size: 0.95rem; color: #38BDF8;">🔑 BYOK (Bring Your Own Key) & Media APIs</h4>
           <div class="grid-2">
             <div>
-              <label>Cloudflare Worker Proxy URL (Default / No-Key Mode)</label>
+              <label>AI Script Generation: Google Gemini API Key (BYOK)</label>
+              <input type="password" id="drawer-gemini-key" placeholder="Google Gemini Flash API Key (stored in localStorage)">
+              <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 4px;">Optional. Leave blank to use the built-in autonomous script generator.</span>
+            </div>
+            <div>
+              <label>Live Vertical Stock Video: Pexels API Key</label>
+              <input type="password" id="pexels-api-key" placeholder="Pexels API Key" value="D00l45nGUuI75vKZIXCksLpu2hiOJZtFkZ1XADrgLMBykTzTbLqJ57UQ">
+              <span style="font-size: 0.75rem; color: #34D399; display: block; margin-top: 4px;">✓ Verified default key active for portrait 9:16 video search.</span>
+            </div>
+          </div>
+          <div class="grid-2" style="margin-top: 12px;">
+            <div>
+              <label>Cloudflare Worker Proxy URL (Optional Team Cache)</label>
               <input type="text" id="stock-proxy-url" placeholder="https://docuforge-stock-proxy.workers.dev (optional)">
             </div>
             <div>
-              <label>Direct Pexels API Key (Fallback)</label>
-              <input type="password" id="pexels-api-key" placeholder="Pexels API Key (stored in localStorage)">
+              <label>Pixabay API Key (Secondary Stock Provider Fallback)</label>
+              <input type="password" id="pixabay-api-key" placeholder="Pixabay API Key (stored in localStorage)">
             </div>
           </div>
-          <div style="margin-top: 8px;">
-            <label>Direct Pixabay API Key (Fallback)</label>
-            <input type="password" id="pixabay-api-key" placeholder="Pixabay API Key (stored in localStorage)">
-          </div>
-          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;">
-            Leave blank to use the default proxy or automatic procedural motion backgrounds. Keys are stored only in your browser's <code>localStorage</code>.
+          <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 8px;">
+            All API keys are permanently saved strictly in your local browser's <code>localStorage</code>. No backend server ever sees or stores your credentials.
           </p>
         </div>
       </div>

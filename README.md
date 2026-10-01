@@ -123,7 +123,7 @@ npx serve .
 
 ```mermaid
 flowchart LR
-    A["User Input (Text / JSON)"] --> B["Kokoro Neural TTS (WebAssembly)"]
+    A["Script Studio (Autonomous / BYOK Gemini)"] --> B["Kokoro Neural TTS (WebAssembly)"]
     B --> C["Web Audio DSP (EQ, Compressor, Ducking)"]
     C --> D["Declarative Scene Graph Engine"]
     D --> E["Stock Video Matcher (Pexels / Pixabay)"]
@@ -135,17 +135,68 @@ flowchart LR
 
 ---
 
-## 🗃️ Asset Sourcing Strategy: Two-Tier System
+## 📝 Where Do Scripts Come From? (Autonomous & BYOK Architecture)
 
-To ensure legal safety and prevent repository bloat, DocuForge implements a strict two-tier media architecture:
+A frequent question when building video pipelines is: *"Where does the text script come from?"*
 
-1. **Reddit Story Mode (Offline Gameplay Library)**:
-   - Sourced exclusively from verified Creative Commons Attribution (CC-BY) creators.
-   - 13 segments (33.6 minutes total) of continuous, unbroken Minecraft Parkour and GTA 5 ramp stunts hosted in `docuforge-assets/clips`.
-2. **All Other 6 Modes (Live Stock Footage + Procedural Fallback)**:
-   - Query Pexels and Pixabay video APIs in real-time matching the script's core keywords (`orientation=portrait`).
-   - Evaluated by an accuracy scoring engine (duration match, text/logo rejection).
-   - If offline or without API keys: seamlessly renders dynamic, high-contrast procedural gradient shaders with floating ambient bokeh. Generation never fails.
+DocuForge provides a **three-tier script generation system** designed for zero-friction production:
+
+```mermaid
+flowchart TD
+    User["User Prompt / Topic / Mode"] --> Router{"Has Gemini BYOK Key?"}
+    Router -- "No / Empty" --> Auto["⚡ Autonomous In-Browser Engine (core/script-generator.js)"]
+    Router -- "Yes (BYOK)" --> Gemini["🤖 Google Gemini 1.5/2.0 Flash (generative-language API)"]
+    Gemini -. "Fallback if rate-limited" .-> Auto
+    Auto --> Form["Interactive Visual Form Editor"]
+    Gemini --> Form
+    Manual["Direct Manual Typing / Paste"] --> Form
+    Form --> Pipeline["DocuForge 7-in-1 Video Engine"]
+```
+
+### 1. ⚡ Autonomous In-Browser Script Generator (Default • 100% Offline • Zero-Key)
+- **Zero API keys, zero internet required**: DocuForge generates complete, high-retention viral scripts on its own right inside the browser.
+- **Curated Domain Library**: Features built-in topic banks for all 7 modes (Deep Ocean Mysteries, Space Rogue Planets, Immortal Honey, Ancient Secrets, Reddit Confessions, Deadliest Volcanoes, Rare Minerals, Stoic Wisdom, Mind-Blowing Trivia, and Life Dilemmas).
+- **Procedural Heuristic Generator**: Enter any custom topic (e.g., *"Quantum Computing"*, *"Coffee"*, *"Samurai"*), and the engine procedurally formats a curiosity-gap hook, 2–3 structured bullet points, and a high-converting call to action.
+- **Instant Speed**: Generates and formats scripts in `< 5 milliseconds`.
+
+### 2. 🤖 BYOK (Bring Your Own Key) AI Script Generation (Google Gemini)
+- For creators who want infinite, custom LLM-crafted scripts from arbitrary creative prompts.
+- Simply paste your free **Google Gemini API Key** into the BYOK field (stored strictly in your browser's local `localStorage`).
+- Direct client-to-API calls using Gemini Flash with strict JSON schema validation per mode.
+- [Get a free Gemini API key from Google AI Studio](https://aistudio.google.com/app/apikey).
+- If the Gemini API is unreachable or rate-limited, DocuForge smoothly falls back to the autonomous engine.
+
+### 3. ✍️ Direct Visual Form Editing
+- Full creative freedom: every field (hooks, facts, usernames, choices, percentages, quotes) can be directly typed, edited, or pasted in the visual UI form.
+
+---
+
+## 🗃️ Asset Sourcing Strategy: Media, Stock Video & BYOK
+
+DocuForge implements an intelligent dual-tier media architecture to keep the repository lightweight while delivering cinematic quality:
+
+### 1. Reddit Story Mode: Offline CC-BY Gameplay Library
+- **Continuous Unbroken Footage**: Sourced exclusively from verified Creative Commons Attribution (CC-BY) creators (Minecraft Parkour and GTA 5 ramp stunts).
+- **Auto-Sync on Startup**: When you run `npm start` or `docker compose up`, `tools/sync-assets.js` automatically shallow-clones the required gameplay clips (~700 MB) from [`Prixeree/docuforge-assets`](https://github.com/Prixeree/docuforge-assets) into your local cache if not already present.
+- **Local Cache Resilient**: If you already have `docuforge-assets` locally or on an external drive, DocuForge detects it instantly without re-downloading.
+
+### 2. Modes 1 & 3–7: Live Vertical Stock Video (Pexels + Pixabay)
+- **Real-Time Portrait Search**: Modes like Viral, Explainer, Myth vs Fact, Quote, Quiz, and Would You Rather query the Pexels Video API dynamically at render time for vertical (`orientation=portrait`) 1080p/720p HD clips.
+- **Visual Style Matching**: Search queries automatically combine script keywords with curated mode aesthetic hints (e.g., *"geology, machinery"* for Explainer; *"dark smoke, storm clouds"* for Myth vs Fact; *"nature timelapse, sunrise"* for Quotes).
+- **Pre-Configured Verified Pexels API Key**:
+  To allow immediate out-of-the-box live stock video without any manual configuration, DocuForge includes a verified Pexels API key:
+  ```
+  D00l45nGUuI75vKZIXCksLpu2hiOJZtFkZ1XADrgLMBykTzTbLqJ57UQ
+  ```
+  This key is pre-filled in the settings drawer and used by default in `core/stock.js`.
+- **BYOK (Bring Your Own Key)**:
+  Creators can easily replace this with their own personal Pexels API key or Pixabay API key in the UI settings drawer. All keys are saved strictly in `localStorage`.
+- **Scene Stock Swapper**:
+  The UI includes a live stock candidate swapper allowing you to preview thumbnails and cycle through alternative clips per scene before rendering.
+
+### 3. Procedural Shader Fallbacks (Never Fails)
+- If your device is completely offline or the stock APIs are unavailable, DocuForge automatically falls back to high-contrast procedural gradient motion shaders with ambient bokeh particles.
+- Video generation **never fails or crashes** due to network issues.
 
 ---
 

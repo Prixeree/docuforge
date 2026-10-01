@@ -8,6 +8,9 @@ export async function initDB() {
   
   return new Promise((resolve) => {
     try {
+      if (typeof indexedDB === 'undefined') {
+        return resolve(null);
+      }
       const request = indexedDB.open(DB_NAME, DB_VERSION);
       
       request.onupgradeneeded = (event) => {
