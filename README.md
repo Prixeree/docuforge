@@ -92,20 +92,20 @@ Measured on standard hardware (Apple Silicon M-series & Intel i5 laptop with 8GB
 
 ### Option A: Native Node.js (`npm start`)
 ```bash
-git clone https://github.com/docuforge/docuforge.git
+git clone https://github.com/Prixeree/docuforge.git
 cd docuforge
 npm start
 ```
-*DocuForge will launch at `http://localhost:3000` with full HTTP 206 video range streaming support.*
+*DocuForge launches at `http://localhost:3000`. On first run, it automatically detects and shallow-syncs gameplay and audio assets from `docuforge-assets` if not found locally.*
 
 ### Option B: Docker Container (`docker compose up`)
 ```bash
-git clone https://github.com/docuforge/docuforge.git
+git clone https://github.com/Prixeree/docuforge.git
 cd docuforge
 docker compose up -d
 # Or single command: npm run docker:start
 ```
-*Runs in a lightweight container exposing `http://localhost:3000`.*
+*Runs in a lightweight Alpine container with automatic background asset caching in a Docker volume.*
 
 ### Option C: Zero-Install Static Server
 ```bash

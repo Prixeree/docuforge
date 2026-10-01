@@ -14,6 +14,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { ensureAssets, findLocalAssets } from './sync-assets.js';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const SCRIPT_DIR = path.resolve(import.meta.dirname, '..');
@@ -91,6 +92,21 @@ const server = http.createServer((req, res) => {
   }
 
   let filePath = path.join(ROOT_DIR, reqPath);
+
+  // Dynamic Asset Directory Resolution (/docuforge-assets/ and /assets/)
+  const localAssetDir = findLocalAssets();
+  if (localAssetDir) {
+    if (reqPath.startsWith('/docuforge-assets/')) {
+      const rel = reqPath.replace(/^\/docuforge-assets\/?/, '');
+      const candidate = path.join(localAssetDir, rel);
+      if (fs.existsSync(candidate)) filePath = candidate;
+    } else if (reqPath.startsWith('/assets/')) {
+      const rel = reqPath.replace(/^\/assets\/?/, '');
+      const candidate = path.join(localAssetDir, rel);
+      if (fs.existsSync(candidate)) filePath = candidate;
+    }
+  }
+
   if (!fs.existsSync(filePath)) {
     const directPath = path.join(SCRIPT_DIR, reqPath.replace(/^\/docuforge\/?/, ''));
     if (fs.existsSync(directPath)) {
@@ -146,7 +162,20 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[dev-server] DocuForge running at http://localhost:${PORT}/docuforge/`);
-  console.log(`[dev-server] Serving assets from http://localhost:${PORT}/docuforge-assets/`);
+async function startServer() {
+  await ensureAssets();
+  server.listen(PORT, '0.0.0.0', () => {
+    console.log(`[dev-server] DocuForge running at http://localhost:${PORT}/docuforge/`);
+    const assetLoc = findLocalAssets();
+    if (assetLoc) {
+      console.log(`[dev-server] Serving assets from ${assetLoc} (mapped to /docuforge-assets/ and /assets/)`);
+    } else {
+      console.log(`[dev-server] Media assets not found locally; live stock & procedural shaders active.`);
+    }
+  });
+}
+
+startServer().catch(err => {
+  console.error('[dev-server] Server error:', err);
 });
+

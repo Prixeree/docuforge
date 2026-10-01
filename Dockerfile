@@ -1,6 +1,9 @@
 # Ultra-lightweight Dockerfile for DocuForge
 FROM node:22-alpine
 
+# Install git and curl for automatic asset syncing and health checks
+RUN apk add --no-cache git curl
+
 # Set working directory
 WORKDIR /app
 
@@ -17,7 +20,7 @@ EXPOSE 3000
 
 # Healthcheck to verify streaming server responsiveness
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/docuforge/ || exit 1
+  CMD curl -f http://localhost:3000/docuforge/ || exit 1
 
-# Start DocuForge streaming server
+# Start DocuForge streaming server (auto-syncs assets on start)
 CMD ["node", "/app/docuforge/tools/dev-server.js"]
