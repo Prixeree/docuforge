@@ -1,6 +1,15 @@
+# Staging & Raw Downloads
+raw_downloads/
+*.download/
+.tmp*
+
+# OS / Editor files
 .DS_Store
 ._*
+Thumbs.db
+.vscode/
+.idea/
+
+# Node / Caches
 node_modules/
-dist/
-tmp/
 *.log

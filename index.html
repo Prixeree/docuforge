@@ -3,319 +3,441 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DocuForge</title>
+  <title>DocuForge — In-Browser Short-Form Video Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Inter:wght@400;600;800;900&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #0e0e10;
-      --surface: #1a1a1f;
-      --surface-hover: #2a2a30;
-      --border: #333;
-      --text: #ededed;
-      --text-muted: #999;
-      --accent: #6366f1;
-      --accent-hover: #4f46e5;
-      --error: #ef4444;
-      --warning: #f59e0b;
-      --success: #10b981;
-      --radius: 8px;
+      --bg: #090D16;
+      --card: #111827;
+      --card-hover: #1F2937;
+      --border: #2D3748;
+      --text: #F9FAFB;
+      --text-muted: #9CA3AF;
+      --accent: #6366F1;
+      --accent-hover: #4F46E5;
+      --accent-glow: rgba(99, 102, 241, 0.35);
+      --success: #10B981;
+      --warning: #F59E0B;
+      --error: #EF4444;
+      --radius: 12px;
     }
-    
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-    
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background-color: var(--bg);
       color: var(--text);
       line-height: 1.5;
-      padding: 20px;
-      max-width: 1200px;
+      padding: 24px 16px;
+      max-width: 1100px;
       margin: 0 auto;
     }
 
-    h1, h2, h3 { margin-bottom: 1rem; }
-    
-    .header {
+    header {
       display: flex;
+      justify-content: space-between;
       align-items: center;
       margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
       gap: 12px;
+    }
+    .brand h1 {
+      font-size: 1.75rem;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #A5B4FC 0%, #6366F1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     .badge {
       background: var(--accent);
-      color: white;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: bold;
+      color: #FFF;
+      font-size: 0.75rem;
+      font-weight: 800;
+      padding: 3px 8px;
+      border-radius: 999px;
+      letter-spacing: 0.5px;
     }
-    
-    .section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-    
+
     .banner {
       padding: 12px 16px;
       border-radius: var(--radius);
       margin-bottom: 20px;
-      display: none;
+      font-size: 0.9rem;
       font-weight: 500;
+      display: none;
     }
-    .banner.warning { background: rgba(245, 158, 11, 0.2); border: 1px solid var(--warning); color: var(--warning); }
-    .banner.error { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error); color: var(--error); display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
-    .banner.visible { display: block; }
-    
-    .grid { display: grid; gap: 16px; }
-    .grid-2 { grid-template-columns: 1fr 1fr; }
-    .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-    
-    label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; }
+    .banner.warning {
+      background: rgba(245, 158, 11, 0.15);
+      border: 1px solid var(--warning);
+      color: #FCD34D;
+      display: block;
+    }
+
+    /* Mode Navigation Tabs */
+    .mode-nav {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+      margin-bottom: 24px;
+    }
+    .mode-tab {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .mode-tab:hover {
+      background: var(--card-hover);
+      color: var(--text);
+    }
+    .mode-tab.active {
+      background: var(--accent);
+      color: #FFF;
+      border-color: var(--accent);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    /* Content Area */
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .panel-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #E2E8F0;
+    }
     input[type="text"], input[type="number"], select, textarea {
       width: 100%;
-      background: var(--bg);
+      background: #0B0F19;
       border: 1px solid var(--border);
       color: var(--text);
-      padding: 10px;
-      border-radius: var(--radius);
+      padding: 12px 14px;
+      border-radius: 8px;
       font-family: inherit;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
     }
     input:focus, select:focus, textarea:focus {
       outline: none;
       border-color: var(--accent);
     }
-    textarea { resize: vertical; min-height: 120px; }
-    
-    .flex-row { display: flex; gap: 12px; align-items: center; }
-    .flex-between { display: flex; justify-content: space-between; align-items: center; }
-    
-    button {
-      background: var(--surface-hover);
-      color: var(--text);
-      border: 1px solid var(--border);
-      padding: 8px 16px;
+    textarea {
+      resize: vertical;
+      min-height: 110px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+    }
+
+    /* Main CTA Button */
+    .btn-generate {
+      width: 100%;
+      background: linear-gradient(135deg, #6366F1 0%, #4F46E5 100%);
+      color: #FFF;
+      border: none;
+      padding: 16px;
       border-radius: var(--radius);
+      font-size: 1.1rem;
+      font-weight: 800;
       cursor: pointer;
-      font-weight: 500;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px var(--accent-glow);
+    }
+    .btn-generate:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px var(--accent-glow);
+    }
+    .btn-generate:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    /* Advanced Settings Collapsible */
+    details.advanced-drawer {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      margin-bottom: 24px;
+    }
+    details.advanced-drawer summary {
+      padding: 16px 20px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      cursor: pointer;
+      color: var(--text-muted);
+      user-select: none;
+    }
+    details.advanced-drawer summary:hover {
+      color: var(--text);
+    }
+    .drawer-content {
+      padding: 0 20px 20px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    /* Clip Gallery */
+    .clip-gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px;
+      max-height: 260px;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .clip-card {
+      border: 2px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      background: #000;
+      position: relative;
       transition: all 0.2s;
     }
-    button:hover { background: #3a3a40; }
-    button.primary { background: var(--accent); color: white; border: none; }
-    button.primary:hover { background: var(--accent-hover); }
-    button.danger { background: var(--error); color: white; border: none; }
-    button:disabled { opacity: 0.5; cursor: not-allowed; }
-    
-    .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
+    .clip-card:hover {
+      border-color: #64748B;
+    }
+    .clip-card.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .clip-card img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      display: block;
+    }
+    .clip-card .clip-info {
+      padding: 6px;
+      font-size: 0.75rem;
+      background: rgba(17, 24, 39, 0.95);
+      color: var(--text-muted);
+    }
 
-    /* Scene List */
-    #scene-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
-    .scene-card {
-      display: grid;
-      grid-template-columns: 120px 1fr auto;
-      gap: 16px;
-      background: var(--bg);
+    /* Render Progress */
+    .progress-box {
+      display: none;
+      background: var(--card);
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 12px;
-      align-items: center;
+      padding: 24px;
+      margin-bottom: 24px;
+      text-align: center;
     }
-    .scene-thumb {
-      width: 120px;
-      height: 68px;
+    .progress-bar-wrap {
+      background: #0B0F19;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 16px 0;
+      border: 1px solid var(--border);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #6366F1, #10B981);
+      transition: width 0.15s ease-out;
+    }
+
+    /* Output Player */
+    .output-box {
+      display: none;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      text-align: center;
+    }
+    video {
+      max-width: 360px;
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 2px solid var(--border);
       background: #000;
-      border-radius: 4px;
-      object-fit: cover;
+      margin-bottom: 16px;
     }
-    .scene-info { overflow: hidden; }
-    .scene-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; margin-bottom: 4px; }
-    .scene-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; }
-    .scene-actions { display: flex; flex-direction: column; gap: 8px; }
-    .scene-actions select { padding: 4px; font-size: 0.85rem; }
-
-    /* Progress */
-    .progress-section { display: none; margin-top: 24px; }
-    .progress-section.visible { display: block; }
-    .progress-item { margin-bottom: 12px; }
-    .progress-header { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px; }
-    .progress-track { background: var(--bg); border: 1px solid var(--border); height: 16px; border-radius: 8px; overflow: hidden; }
-    .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.2s; }
-    .progress-fill.done { background: var(--success); }
-    #progress-status { font-weight: bold; margin-bottom: 16px; color: var(--accent); }
-
-    /* Output */
-    .output-section { display: none; margin-top: 24px; text-align: center; }
-    .output-section.visible { display: block; }
-    video { max-width: 100%; max-height: 500px; background: #000; border-radius: var(--radius); margin-bottom: 16px; border: 1px solid var(--border); }
+    .btn-download {
+      background: var(--success);
+      color: #FFF;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
 
-  <div id="error-banner" class="banner error"></div>
-  
-  <div class="header">
-    <h1>DocuForge</h1>
-    <span class="badge">v1.0</span>
-  </div>
-  
+  <header>
+    <div class="brand">
+      <h1>DocuForge</h1>
+      <span class="badge">7-IN-1 ENGINE</span>
+    </div>
+    <div>
+      <span style="font-size: 0.85rem; color: var(--text-muted);">100% In-Browser &bull; Zero Backend</span>
+    </div>
+  </header>
+
   <div id="hw-banner" class="banner warning">
-    Warning: Hardware encoding for 1080p is not supported on this device. Exports may be slower.
+    Hardware acceleration probe checking VideoEncoder capabilities...
   </div>
 
-  <div class="grid grid-3">
-    <div class="section">
-      <h3>API Keys</h3>
-      <div class="grid">
-        <div>
-          <label>Pexels API Key <a href="https://www.pexels.com/api/" target="_blank" class="hint">(Get Free)</a></label>
-          <input type="text" id="key-pexels" placeholder="Enter Pexels key">
-        </div>
-        <div>
-          <label>Pixabay API Key <a href="https://pixabay.com/api/docs/" target="_blank" class="hint">(Get Free)</a></label>
-          <input type="text" id="key-pixabay" placeholder="Enter Pixabay key">
-        </div>
-        <div>
-          <label>Gemini API Key <span class="hint">(Optional, for better keywords)</span></label>
-          <input type="text" id="key-gemini" placeholder="Enter Gemini key">
-        </div>
-      </div>
-    </div>
-
-    <div class="section" style="grid-column: span 2;">
-      <h3>Script</h3>
-      <textarea id="script-input" placeholder="Enter your documentary script here. Double newlines separate scenes..."></textarea>
-      <div class="flex-between mt-2">
-        <span id="scene-count" class="hint">0 scenes detected</span>
-        <div class="flex-row">
-          <button id="btn-enhance">Enhance Keywords</button>
-          <button id="btn-parse" class="primary">Parse Script</button>
-        </div>
-      </div>
-    </div>
+  <!-- Mode Selector Tabs -->
+  <div class="mode-nav" id="mode-tabs">
+    <button class="mode-tab active" data-mode="viral">⚡ Viral Facts</button>
+    <button class="mode-tab" data-mode="reddit-story">💬 Reddit Story</button>
+    <button class="mode-tab" data-mode="explainer">📚 Explainer List</button>
+    <button class="mode-tab" data-mode="myth-vs-fact">⚔️ Myth vs Fact</button>
+    <button class="mode-tab" data-mode="quote-motivational">📜 Quote & Wisdom</button>
+    <button class="mode-tab" data-mode="quiz-trivia">❓ Quiz & Trivia</button>
+    <button class="mode-tab" data-mode="would-you-rather">⚖️ Would You Rather</button>
   </div>
 
-  <div class="section">
-    <div class="flex-between">
-      <h3>Scenes & Clips</h3>
-      <button id="btn-fetch-clips">Fetch All Clips</button>
+  <!-- Mode Input Panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title" id="mode-title">⚡ Viral Facts & Hooks</span>
+      <span style="font-size: 0.8rem; color: var(--text-muted);" id="mode-duration-hint">Target: 15-45s &bull; 9:16 Vertical</span>
     </div>
-    <div id="scene-list">
-      <!-- Scene cards injected here -->
-      <div class="hint text-center" style="padding: 20px;">Parse script to generate scenes.</div>
+
+    <div id="mode-fields">
+      <!-- Dynamic Mode Input Fields Injected Here -->
     </div>
+
+    <button id="btn-generate-main" class="btn-generate">
+      <span>🚀 Generate Finished MP4 (Auto Flow)</span>
+    </button>
   </div>
 
-  <div class="grid grid-2">
-    <div class="section">
-      <h3>Voice & Music</h3>
-      <div class="grid">
+  <!-- Advanced Overrides Drawer (Collapsed by Default) -->
+  <details class="advanced-drawer">
+    <summary>⚙️ Advanced Customizations & Media Overrides (Optional)</summary>
+    <div class="drawer-content">
+      <div class="grid-2" style="margin-top: 16px;">
         <div>
-          <label>Voice</label>
+          <label>Subtitle Preset</label>
+          <select id="sub-preset">
+            <option value="bold-pop" selected>Bold Pop (High-Impact Yellow/White)</option>
+            <option value="classic">Classic (Translucent Pill)</option>
+            <option value="handwritten">Handwritten (Caveat Cursive)</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Voiceover Voice</label>
           <select id="voice-select">
-            <option value="bm_george">bm_george (Default)</option>
-            <option value="bm_lewis">bm_lewis</option>
-            <option value="bm_daniel">bm_daniel</option>
-            <option value="am_michael">am_michael</option>
-            <option value="am_adam">am_adam</option>
-            <option value="af_heart">af_heart</option>
-            <option value="af_star">af_star</option>
-            <option value="af_bella">af_bella</option>
-            <option value="bf_emma">bf_emma</option>
+            <option value="bm_george" selected>bm_george (British Deep Documentary)</option>
+            <option value="bm_lewis">bm_lewis (British Clear)</option>
+            <option value="af_heart">af_heart (American Warm)</option>
+            <option value="am_adam">am_adam (American Narrator)</option>
           </select>
         </div>
-        <div>
-          <label>Speed: <span id="speed-val">0.93</span>x</label>
-          <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.01" value="0.93">
-        </div>
-        <div>
-          <button id="btn-preview-voice">Preview Voice</button>
-        </div>
-        <div>
-          <label>Background Music (Optional)</label>
-          <input type="file" id="music-upload" accept="audio/*">
-        </div>
-      </div>
-    </div>
 
-    <div class="section">
-      <h3>Export Settings</h3>
-      <div class="grid">
         <div>
-          <label>Quality Tier</label>
+          <label>Background Music Track</label>
+          <select id="music-select">
+            <option value="auto" selected>✨ Auto-Pick by Mode Mood</option>
+            <option value="music/kevin-macleod-sneaky-snitch.mp3">Sneaky Snitch (Upbeat Curious)</option>
+            <option value="music/kevin-macleod-the-descent.mp3">The Descent (Tense Suspense)</option>
+            <option value="music/kevin-macleod-faster-does-it.mp3">Faster Does It (Game Show)</option>
+            <option value="music/kevin-macleod-carefree.mp3">Carefree (Playful Upbeat)</option>
+            <option value="music/nastelbom-documentary-documentary-music-606698.mp3">Documentary Music (NastelBom)</option>
+            <option value="music/leberch-atmosphere-documentary-603152.mp3">Atmosphere (Leberch)</option>
+            <option value="music/leberch-documentary-calm-603945.mp3">Documentary Calm (Leberch)</option>
+            <option value="none">🔇 No Music</option>
+          </select>
+        </div>
+
+        <div>
+          <label>Quality & Resolution</label>
           <select id="quality-select">
-            <option value="fullhd">Full HD 1080p</option>
-            <option value="hd" selected>HD 720p</option>
-            <option value="draft">Draft 480p</option>
-          </select>
-        </div>
-        <div>
-          <label>Default Transition</label>
-          <select id="transition-select">
-            <option value="crossfade">Crossfade</option>
-            <option value="slideLeft">Slide Left</option>
-            <option value="slideRight">Slide Right</option>
-            <option value="wipeLeft">Wipe Left</option>
-            <option value="wipeDown">Wipe Down</option>
-            <option value="dipToBlack">Dip to Black</option>
-            <option value="auto">Auto (Random)</option>
-            <option value="none">None</option>
+            <option value="hd" selected>HD 720x1280 (Recommended)</option>
+            <option value="draft">Draft 540x960 (Fastest)</option>
+            <option value="full-hd">Full HD 1080x1920</option>
           </select>
         </div>
       </div>
+
+      <div style="margin-top: 16px;">
+        <label>Background Clip Selection</label>
+        <div class="clip-gallery" id="clip-gallery">
+          <!-- Clip Cards Injected Here -->
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Progress Box -->
+  <div class="progress-box" id="progress-box">
+    <h3 id="progress-status-text">Synthesizing Neural Voiceover...</h3>
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progress-bar-fill"></div>
+    </div>
+    <span style="font-size: 0.85rem; color: var(--text-muted);" id="progress-detail">Offline frame-by-frame WebCodecs rendering</span>
+  </div>
+
+  <!-- Video Output Player -->
+  <div class="output-box" id="output-box">
+    <h3 style="margin-bottom: 12px; color: #10B981;">🎉 Video Generation Complete!</h3>
+    <video id="output-video" controls playsinline></video>
+    <div>
+      <a id="download-link" class="btn-download" download="docuforge-video.mp4">💾 Download MP4</a>
     </div>
   </div>
 
-  <div class="section" style="display: flex; justify-content: center; gap: 16px;">
-    <button id="btn-generate" class="primary" style="font-size: 1.2rem; padding: 12px 32px;" disabled>Generate Documentary</button>
-    <button id="btn-cancel" class="danger" style="display: none;">Cancel</button>
-  </div>
-
-  <div id="progress-section" class="section progress-section">
-    <div id="progress-status">Initializing...</div>
-    
-    <div class="progress-item">
-      <div class="progress-header"><span>Script & Setup</span> <span id="pct-script">0%</span></div>
-      <div class="progress-track"><div id="prog-script" class="progress-fill"></div></div>
-    </div>
-    <div class="progress-item">
-      <div class="progress-header"><span>Stock Clips</span> <span id="pct-stock">0%</span></div>
-      <div class="progress-track"><div id="prog-stock" class="progress-fill"></div></div>
-    </div>
-    <div class="progress-item">
-      <div class="progress-header"><span>Voiceover</span> <span id="pct-voice">0%</span></div>
-      <div class="progress-track"><div id="prog-voice" class="progress-fill"></div></div>
-    </div>
-    <div class="progress-item">
-      <div class="progress-header"><span>Audio Mix</span> <span id="pct-audio">0%</span></div>
-      <div class="progress-track"><div id="prog-audio" class="progress-fill"></div></div>
-    </div>
-    <div class="progress-item">
-      <div class="progress-header"><span>Render Video</span> <span id="pct-render">0%</span></div>
-      <div class="progress-track"><div id="prog-render" class="progress-fill"></div></div>
-    </div>
-    <div class="progress-item">
-      <div class="progress-header"><span>Mux & Save</span> <span id="pct-mux">0%</span></div>
-      <div class="progress-track"><div id="prog-mux" class="progress-fill"></div></div>
-    </div>
-  </div>
-
-  <div id="output-section" class="section output-section">
-    <h2>Done!</h2>
-    <video id="output-video" controls></video>
-    <div class="flex-row" style="justify-content: center;">
-      <a id="btn-download" class="button primary" download="docuforge_export.mp4" style="display:inline-block; padding:8px 16px; background:var(--accent); color:white; border-radius:var(--radius);">Download Video</a>
-      <span id="output-size" class="hint" style="align-self: center;"></span>
-    </div>
-    <button id="btn-new" class="mt-2" style="margin-top: 16px;">Create New Video</button>
-  </div>
-
-  <script type="module" src="./src/main.js"></script>
+  <script type="module" src="src/app.js"></script>
 </body>
 </html>
