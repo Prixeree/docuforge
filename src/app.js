@@ -247,7 +247,44 @@ An hour later, two airport security guards approached me with a microphone and a
   }
 };
 
+function getAssetBaseUrl() {
+  const input = document.getElementById('asset-base-url');
+  let base = (input && input.value.trim()) || localStorage.getItem('docuforge_asset_base') || '../docuforge-assets';
+  return base.replace(/\/+$/, '');
+}
+
+function getAssetUrl(relPath) {
+  if (!relPath) return '';
+  if (relPath.startsWith('http://') || relPath.startsWith('https://') || relPath.startsWith('data:')) {
+    return relPath;
+  }
+  return `${getAssetBaseUrl()}/${relPath.replace(/^\/+/, '')}`;
+}
+
+async function reloadManifest() {
+  try {
+    const base = getAssetBaseUrl();
+    manifest = await loadManifest(`${base}/manifest.json`);
+    renderGallery(manifest.clips || []);
+  } catch (err) {
+    console.warn('Manifest load failed:', err.message);
+  }
+}
+
 async function initApp() {
+  // Restore saved asset base URL if present
+  const savedBase = localStorage.getItem('docuforge_asset_base');
+  const assetInput = document.getElementById('asset-base-url');
+  if (savedBase && assetInput) {
+    assetInput.value = savedBase;
+  }
+  if (assetInput) {
+    assetInput.addEventListener('change', () => {
+      localStorage.setItem('docuforge_asset_base', assetInput.value.trim());
+      reloadManifest();
+    });
+  }
+
   // Probe Hardware
   const hw = await probeHardwareEncoding();
   const banner = document.getElementById('hw-banner');
@@ -258,12 +295,7 @@ async function initApp() {
   }
 
   // Load Manifest
-  try {
-    manifest = await loadManifest('../docuforge-assets/manifest.json');
-    renderGallery(manifest.clips || []);
-  } catch (err) {
-    console.warn('Manifest load failed:', err.message);
-  }
+  await reloadManifest();
 
   // Set up Tabs
   const tabs = document.querySelectorAll('.mode-tab');
@@ -309,7 +341,7 @@ function renderGallery(clips) {
   for (const c of clips) {
     html += `
       <div class="clip-card" data-id="${c.id}">
-        <img src="../docuforge-assets/${c.thumbnail}" alt="${c.id}" loading="lazy">
+        <img src="${getAssetUrl(c.thumbnail)}" alt="${c.id}" loading="lazy">
         <div class="clip-info">${c.id} (${Math.round(c.duration)}s)</div>
       </div>
     `;
@@ -380,7 +412,7 @@ async function handleGenerate() {
     if (musicChoice !== 'none') {
       const musicPath = (musicChoice === 'auto') ? cfg.defaultMusic : musicChoice;
       try {
-        const musicResp = await fetch(`../docuforge-assets/${musicPath}`);
+        const musicResp = await fetch(getAssetUrl(musicPath));
         const musicArray = await musicResp.arrayBuffer();
         const actx = new (window.AudioContext || window.webkitAudioContext)();
         musicBuf = await actx.decodeAudioData(musicArray);
@@ -420,7 +452,7 @@ async function handleGenerate() {
       renderWorker.onmessage = async (e) => {
         if (e.data.type === 'ready') {
           // Prepare background video element
-          const videoEl = createRangeVideo(`../docuforge-assets/${graph.scenes[0].layers[0].src}`);
+          const videoEl = createRangeVideo(getAssetUrl(graph.scenes[0].layers[0].src));
           await new Promise(r => videoEl.onloadedmetadata = r);
 
           for (let i = 0; i < graph.scenes.length; i++) {
