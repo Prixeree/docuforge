@@ -38,7 +38,7 @@ const MIME_TYPES = {
 const server = http.createServer((req, res) => {
   // CORS & Security Headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Range, Content-Type, Accept');
   res.setHeader('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges');
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
@@ -52,6 +52,37 @@ const server = http.createServer((req, res) => {
 
   // URL parsing
   let reqPath = decodeURIComponent(req.url.split('?')[0]);
+
+  // Save example video endpoint
+  if (req.method === 'POST' && reqPath === '/api/save-example') {
+    const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost:3000'}`);
+    const mode = urlObj.searchParams.get('mode');
+    if (!mode) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Missing mode parameter' }));
+      return;
+    }
+
+    const outDir = path.join(ROOT_DIR, 'docuforge', 'examples', mode);
+    fs.mkdirSync(outDir, { recursive: true });
+    const outFile = path.join(outDir, 'example.mp4');
+    const writeStream = fs.createWriteStream(outFile);
+
+    req.pipe(writeStream);
+    writeStream.on('finish', () => {
+      const stats = fs.statSync(outFile);
+      console.log(`[dev-server] Saved example for ${mode}: ${outFile} (${stats.size} bytes)`);
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, mode, path: outFile, size: stats.size }));
+    });
+    writeStream.on('error', (err) => {
+      console.error(`[dev-server] Error saving example for ${mode}:`, err);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: err.message }));
+    });
+    return;
+  }
+
   if (reqPath === '/' || reqPath === '') {
     reqPath = '/docuforge/index.html';
   } else if (reqPath === '/docuforge' || reqPath === '/docuforge/') {

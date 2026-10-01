@@ -1,0 +1,17 @@
+{
+  "mode": "explainer",
+  "title": "Top 5 Rarest Minerals on Earth",
+  "items": [
+    { "rank": 1, "title": "Painite", "line": "Painite: Once considered the rarest mineral on Earth with only two known crystals in existence for decades." },
+    { "rank": 2, "title": "Kyawthuite", "line": "Kyawthuite: Only a single natural specimen of this deep reddish-orange gemstone has ever been found in Burma." },
+    { "rank": 3, "title": "Taaffeite", "line": "Taaffeite: Over a million times rarer than diamonds, discovered by a gemologist who noticed unusual refraction." },
+    { "rank": 4, "title": "Jeremejevite", "line": "Jeremejevite: A magnificent sky-blue boron mineral crystal found exclusively in deep granitic pegmatites." },
+    { "rank": 5, "title": "Poudretteite", "line": "Poudretteite: An ultra-rare pink hexagonal crystal first documented at Mont Saint-Hilaire, Quebec." }
+  ],
+  "settings": {
+    "subtitlePreset": "bold-pop",
+    "voice": "bm_george",
+    "music": "music/nastelbom-documentary-documentary-music-606698.mp3",
+    "quality": "hd"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "mode": "viral",
+  "title": "5 Terrifying Facts About the Deep Ocean",
+  "hook": "Here are 5 terrifying facts about the deep ocean that will give you chills.",
+  "facts": [
+    "Over 80 percent of the entire ocean remains completely unexplored by mankind.",
+    "The Mariana Trench plunges nearly 36,000 feet deep, deep enough to fully submerge Mount Everest.",
+    "At the bottom, water pressure exceeds 1,000 atmospheres, easily crushing a solid steel submarine.",
+    "Massive colossal squids roam the abyssal twilight zone with eyes as large as dinner plates.",
+    "Hydrothermal vents erupt superheated water at 750 degrees Fahrenheit, supporting alien-like ecosystems."
+  ],
+  "cta": "Which deep ocean secret shocked you the most? Follow for more discoveries!",
+  "settings": {
+    "subtitlePreset": "bold-pop",
+    "voice": "bm_george",
+    "music": "music/kevin-macleod-sneaky-snitch.mp3",
+    "quality": "hd"
+  }
+}

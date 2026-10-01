@@ -426,6 +426,257 @@ function updateProgress(percent, statusText) {
   if (statusText) text.textContent = statusText;
 }
 
+export async function runDocuforgePipeline(mode, data, options = {}) {
+  const cfg = MODE_CONFIGS[mode];
+  if (!cfg) throw new Error(`Unknown mode: ${mode}`);
+
+  updateProgress(0.1, 'Step 1/5: Synthesizing Neural Voiceover...');
+
+  // 1. Text-to-Speech
+  try {
+    await initTTS();
+  } catch (e) {
+    console.warn('TTS init warning:', e.message);
+  }
+
+  let textToVoice = '';
+  if (mode === 'viral') textToVoice = `${data.hook}. ${data.facts.join('. ')}. ${data.cta}`;
+  else if (mode === 'reddit-story') textToVoice = data.story;
+  else if (mode === 'explainer') textToVoice = data.items.map(i => i.line).join('. ');
+  else if (mode === 'myth-vs-fact') textToVoice = `Myth: ${data.myth}. Fact: ${data.fact}. ${data.explanation}`;
+  else if (mode === 'quote-motivational') textToVoice = `"${data.quote}" said by ${data.author}`;
+  else if (mode === 'quiz-trivia') textToVoice = `${data.question}. ${data.funFact}`;
+  else if (mode === 'would-you-rather') textToVoice = `Would you rather ${data.optionA}, or would you rather ${data.optionB}?`;
+
+  const voice = options.voice || 'bm_george';
+  const sceneParts = [{ text: textToVoice }];
+  const ttsResults = await generateAllScenes(sceneParts, { voice });
+  const audioData = ttsResults[0];
+
+  updateProgress(0.35, 'Step 2/5: Processing Voice DSP & Background Music...');
+
+  // 2. Select Clip / Live Stock Footage
+  let clipWindow = null;
+  const quality = options.quality || document.getElementById('quality-select')?.value || 'hd';
+  const width = quality === 'draft' ? 540 : 720;
+  const height = quality === 'draft' ? 960 : 1280;
+
+  if (mode === 'reddit-story') {
+    if (!manifest) {
+      try {
+        const base = getAssetBaseUrl();
+        manifest = await loadManifest(`${base}/manifest.json`);
+      } catch (e) {
+        console.warn('Fallback manifest load:', e);
+      }
+    }
+    const clips = filterClipsByMode(manifest, 'reddit-story');
+    const chosenClip = options.clip 
+      ? (manifest?.clips?.find(c => c.id === options.clip) || clips[0])
+      : (selectedClipId !== 'auto' 
+        ? (manifest?.clips?.find(c => c.id === selectedClipId) || clips[0])
+        : clips[Math.floor(Math.random() * clips.length)]);
+    clipWindow = selectClipWindow(chosenClip, audioData.duration + 2.0);
+  } else {
+    clipWindow = {
+      clipId: 'live-stock',
+      url: '',
+      draftUrl: '',
+      startTime: 0,
+      duration: audioData.duration + 5
+    };
+  }
+
+  // 3. Audio Mix & Ducking
+  const processedVoice = await processVoiceChain(audioData.samples, audioData.sampleRate);
+  
+  let musicBuf = null;
+  const musicChoice = options.music || document.getElementById('music-select')?.value || 'auto';
+  if (musicChoice !== 'none') {
+    const musicPath = (musicChoice === 'auto') ? cfg.defaultMusic : musicChoice;
+    try {
+      const musicResp = await fetch(getAssetUrl(musicPath));
+      const musicArray = await musicResp.arrayBuffer();
+      const actx = new (window.AudioContext || window.webkitAudioContext)();
+      musicBuf = await actx.decodeAudioData(musicArray);
+    } catch (e) {
+      console.warn('Music load failed, continuing without music:', e.message);
+    }
+  }
+
+  const { mixedBuffer } = await mixAudio([processedVoice], musicBuf, [], {
+    duckLevel: 0.2,
+    sceneGap: 0.4
+  });
+
+  const audioChunks = await encodeAAC(mixedBuffer);
+
+  updateProgress(0.55, 'Step 3/5: Building Declarative Scene Graph...');
+
+  // 4. Build Scene Graph
+  const subtitlePreset = options.subtitlePreset || document.getElementById('sub-preset')?.value || cfg.defaultSubtitle;
+  const graph = cfg.buildGraph(data, audioData, clipWindow, {
+    width,
+    height,
+    quality,
+    subtitlePreset
+  });
+
+  // If stock mode (not reddit-story), query and match live stock clips per scene
+  if (mode !== 'reddit-story') {
+    updateProgress(0.60, 'Step 3/5: Searching & Scoring Live Stock Footage (Pexels / Pixabay)...');
+
+    const proxyUrl = options.proxyUrl || document.getElementById('stock-proxy-url')?.value?.trim() || null;
+    const apiKeys = {
+      pexels: options.pexelsApiKey || document.getElementById('pexels-api-key')?.value?.trim() || null,
+      pixabay: options.pixabayApiKey || document.getElementById('pixabay-api-key')?.value?.trim() || null
+    };
+
+    const stockCards = document.getElementById('scene-stock-cards');
+    if (stockCards) stockCards.innerHTML = '';
+    let anyFallback = false;
+
+    for (let i = 0; i < graph.scenes.length; i++) {
+      const sc = graph.scenes[i];
+      const sceneText = sc.layers.find(l => l.type === 'subtitles')?.words?.map(w => w.text).join(' ') || data.hook || '';
+
+      const stockRes = await searchStockClips({
+        mode: mode,
+        text: sceneText,
+        minDuration: sc.duration,
+        quality,
+        proxyUrl,
+        apiKeys
+      });
+
+      if (stockRes.isFallback || !stockRes.selected?.url) {
+        anyFallback = true;
+        sc.isProcedural = true;
+        sc.mode = mode;
+      } else {
+        sc.stockCandidates = stockRes.candidates;
+        sc.stockIndex = 0;
+        sc.isProcedural = false;
+        sc.mode = mode;
+        sc.layers[0].src = stockRes.selected.url;
+        sc.layers[0].startTime = 0;
+
+        if (stockCards) {
+          renderSceneStockCard(stockCards, i, sc);
+        }
+      }
+    }
+
+    const warningBanner = document.getElementById('stock-warning-banner');
+    if (warningBanner) {
+      warningBanner.style.display = anyFallback ? 'block' : 'none';
+    }
+  }
+
+  updateProgress(0.70, 'Step 4/5: Offline Video Encoding (WebCodecs)...');
+
+  // 5. Video Rendering Worker
+  const videoChunks = [];
+  const pendingSceneResolvers = new Map();
+  const renderWorker = new Worker(new URL('../core/render.worker.js', import.meta.url), { type: 'module' });
+
+  await new Promise((resolve, reject) => {
+    renderWorker.onmessage = async (e) => {
+      if (e.data.type === 'ready') {
+        try {
+          for (let i = 0; i < graph.scenes.length; i++) {
+            const sc = graph.scenes[i];
+            let bitmap = null;
+
+            if (!sc.isProcedural && sc.layers[0]?.src) {
+              try {
+                const videoEl = createRangeVideo(getAssetUrl(sc.layers[0].src));
+                await new Promise((r, rej) => {
+                  videoEl.onloadedmetadata = r;
+                  videoEl.onerror = () => rej(new Error('Video load failed'));
+                });
+                await seekVideoFrame(videoEl, sc.layers[0].startTime || 0);
+                bitmap = await createImageBitmap(videoEl);
+              } catch (vidErr) {
+                console.warn(`[render] Video load failed for scene ${i + 1}, falling back to procedural:`, vidErr.message);
+                sc.isProcedural = true;
+                sc.mode = mode;
+              }
+            }
+
+            const sceneWait = new Promise((res) => {
+              pendingSceneResolvers.set(i, res);
+            });
+
+            renderWorker.postMessage({
+              type: 'render-scene',
+              sceneIndex: i,
+              totalScenes: graph.scenes.length,
+              scene: sc,
+              bitmap,
+              subtitleWords: sc.layers.find(l => l.type === 'subtitles')?.words || [],
+              subtitlePreset
+            }, bitmap ? [bitmap] : []);
+
+            await sceneWait;
+          }
+
+          renderWorker.postMessage({ type: 'finalize' });
+        } catch (sceneErr) {
+          reject(sceneErr);
+        }
+      } else if (e.data.type === 'scene-done') {
+        const resolver = pendingSceneResolvers.get(e.data.sceneIndex);
+        if (resolver) {
+          resolver();
+          pendingSceneResolvers.delete(e.data.sceneIndex);
+        }
+      } else if (e.data.type === 'video-chunk') {
+        videoChunks.push(e.data);
+      } else if (e.data.type === 'progress') {
+        const frac = 0.70 + (e.data.sceneIndex / graph.scenes.length) * 0.25;
+        updateProgress(frac, `Encoding Scene ${e.data.sceneIndex + 1}/${graph.scenes.length}...`);
+      } else if (e.data.type === 'finalized') {
+        resolve();
+      } else if (e.data.type === 'error') {
+        reject(new Error(e.data.message));
+      }
+    };
+
+    renderWorker.postMessage({
+      type: 'init',
+      width,
+      height,
+      fps: 24,
+      bitrate: (quality === 'draft') ? 1_500_000 : 3_500_000
+    });
+  });
+
+  updateProgress(0.95, 'Step 5/5: Multiplexing Final MP4...');
+
+  // 6. MP4 Multiplexing
+  const muxerData = await createMuxer({
+    width,
+    height,
+    sampleRate: 48000,
+    numberOfChannels: 2
+  });
+
+  videoChunks.forEach(({ chunk, meta }) => addVideoChunk(muxerData.muxer, chunk, meta));
+  audioChunks.forEach(({ chunk, meta }) => addAudioChunk(muxerData.muxer, chunk, meta));
+
+  const finalBlob = await finalizeMuxer(muxerData);
+
+  updateProgress(1.0, '🎉 Done!');
+
+  return {
+    blob: finalBlob,
+    duration: audioData.duration,
+    scenesCount: graph.scenes.length,
+    graph
+  };
+}
+
 async function handleGenerate() {
   const btn = document.getElementById('btn-generate-main');
   btn.disabled = true;
@@ -433,235 +684,18 @@ async function handleGenerate() {
   try {
     const cfg = MODE_CONFIGS[currentMode];
     const data = cfg.getData();
+    const options = {
+      voice: document.getElementById('voice-select')?.value,
+      quality: document.getElementById('quality-select')?.value,
+      music: document.getElementById('music-select')?.value,
+      subtitlePreset: document.getElementById('sub-preset')?.value,
+      clip: selectedClipId !== 'auto' ? selectedClipId : null
+    };
 
-    updateProgress(0.1, 'Step 1/5: Synthesizing Neural Voiceover...');
+    const result = await runDocuforgePipeline(currentMode, data, options);
+    const finalBlob = result.blob;
 
-    // 1. Text-to-Speech
-    try {
-      await initTTS();
-    } catch (e) {
-      console.warn('TTS init warning:', e.message);
-    }
-    let textToVoice = '';
-    if (currentMode === 'viral') textToVoice = `${data.hook}. ${data.facts.join('. ')}. ${data.cta}`;
-    else if (currentMode === 'reddit-story') textToVoice = data.story;
-    else if (currentMode === 'explainer') textToVoice = data.items.map(i => i.line).join('. ');
-    else if (currentMode === 'myth-vs-fact') textToVoice = `Myth: ${data.myth}. Fact: ${data.fact}. ${data.explanation}`;
-    else if (currentMode === 'quote-motivational') textToVoice = `"${data.quote}" said by ${data.author}`;
-    else if (currentMode === 'quiz-trivia') textToVoice = `${data.question}. ${data.funFact}`;
-    else if (currentMode === 'would-you-rather') textToVoice = `Would you rather ${data.optionA}, or would you rather ${data.optionB}?`;
-
-    const voice = document.getElementById('voice-select').value;
-    const sceneParts = [{ text: textToVoice }];
-    const ttsResults = await generateAllScenes(sceneParts, { voice });
-    const audioData = ttsResults[0];
-
-    updateProgress(0.35, 'Step 2/5: Processing Voice DSP & Background Music...');
-
-    // 2. Select Clip / Live Stock Footage
-    let clipWindow = null;
-    const quality = document.getElementById('quality-select').value;
-    const width = quality === 'draft' ? 540 : 720;
-    const height = quality === 'draft' ? 960 : 1280;
-
-    if (currentMode === 'reddit-story') {
-      const clips = filterClipsByMode(manifest, 'reddit-story');
-      const chosenClip = (selectedClipId !== 'auto') 
-        ? (manifest.clips.find(c => c.id === selectedClipId) || clips[0])
-        : clips[Math.floor(Math.random() * clips.length)];
-      clipWindow = selectClipWindow(chosenClip, audioData.duration + 2.0);
-    } else {
-      clipWindow = {
-        clipId: 'live-stock',
-        url: '',
-        draftUrl: '',
-        startTime: 0,
-        duration: audioData.duration + 5
-      };
-    }
-
-    // 3. Audio Mix & Ducking
-    const processedVoice = await processVoiceChain(audioData.samples, audioData.sampleRate);
-    
-    let musicBuf = null;
-    const musicChoice = document.getElementById('music-select').value;
-    if (musicChoice !== 'none') {
-      const musicPath = (musicChoice === 'auto') ? cfg.defaultMusic : musicChoice;
-      try {
-        const musicResp = await fetch(getAssetUrl(musicPath));
-        const musicArray = await musicResp.arrayBuffer();
-        const actx = new (window.AudioContext || window.webkitAudioContext)();
-        musicBuf = await actx.decodeAudioData(musicArray);
-      } catch (e) {
-        console.warn('Music load failed, continuing without music:', e.message);
-      }
-    }
-
-    const { mixedBuffer } = await mixAudio([processedVoice], musicBuf, [], {
-      duckLevel: 0.2,
-      sceneGap: 0.4
-    });
-
-    const audioChunks = await encodeAAC(mixedBuffer);
-
-    updateProgress(0.55, 'Step 3/5: Building Declarative Scene Graph...');
-
-    // 4. Build Scene Graph
-    const graph = cfg.buildGraph(data, audioData, clipWindow, {
-      width,
-      height,
-      quality,
-      subtitlePreset: document.getElementById('sub-preset').value
-    });
-
-    // If stock mode (not reddit-story), query and match live stock clips per scene
-    if (currentMode !== 'reddit-story') {
-      updateProgress(0.60, 'Step 3/5: Searching & Scoring Live Stock Footage (Pexels / Pixabay)...');
-
-      const proxyUrl = document.getElementById('stock-proxy-url')?.value.trim() || null;
-      const apiKeys = {
-        pexels: document.getElementById('pexels-api-key')?.value.trim() || null,
-        pixabay: document.getElementById('pixabay-api-key')?.value.trim() || null
-      };
-
-      const stockCards = document.getElementById('scene-stock-cards');
-      if (stockCards) stockCards.innerHTML = '';
-      let anyFallback = false;
-
-      for (let i = 0; i < graph.scenes.length; i++) {
-        const sc = graph.scenes[i];
-        const sceneText = sc.layers.find(l => l.type === 'subtitles')?.words?.map(w => w.text).join(' ') || data.hook || '';
-
-        const stockRes = await searchStockClips({
-          mode: currentMode,
-          text: sceneText,
-          minDuration: sc.duration,
-          quality,
-          proxyUrl,
-          apiKeys
-        });
-
-        if (stockRes.isFallback || !stockRes.selected?.url) {
-          anyFallback = true;
-          sc.isProcedural = true;
-          sc.mode = currentMode;
-        } else {
-          sc.stockCandidates = stockRes.candidates;
-          sc.stockIndex = 0;
-          sc.isProcedural = false;
-          sc.mode = currentMode;
-          sc.layers[0].src = stockRes.selected.url;
-          sc.layers[0].startTime = 0;
-
-          if (stockCards) {
-            renderSceneStockCard(stockCards, i, sc);
-          }
-        }
-      }
-
-      const warningBanner = document.getElementById('stock-warning-banner');
-      if (warningBanner) {
-        warningBanner.style.display = anyFallback ? 'block' : 'none';
-      }
-    }
-
-    updateProgress(0.70, 'Step 4/5: Offline Video Encoding (WebCodecs)...');
-
-    // 5. Video Rendering Worker
-    const videoChunks = [];
-    const pendingSceneResolvers = new Map();
-    const renderWorker = new Worker(new URL('../core/render.worker.js', import.meta.url), { type: 'module' });
-
-    await new Promise((resolve, reject) => {
-      renderWorker.onmessage = async (e) => {
-        if (e.data.type === 'ready') {
-          try {
-            for (let i = 0; i < graph.scenes.length; i++) {
-              const sc = graph.scenes[i];
-              let bitmap = null;
-
-              if (!sc.isProcedural && sc.layers[0]?.src) {
-                try {
-                  const videoEl = createRangeVideo(getAssetUrl(sc.layers[0].src));
-                  await new Promise((r, rej) => {
-                    videoEl.onloadedmetadata = r;
-                    videoEl.onerror = () => rej(new Error('Video load failed'));
-                  });
-                  await seekVideoFrame(videoEl, sc.layers[0].startTime || 0);
-                  bitmap = await createImageBitmap(videoEl);
-                } catch (vidErr) {
-                  console.warn(`[render] Video load failed for scene ${i + 1}, falling back to procedural:`, vidErr.message);
-                  sc.isProcedural = true;
-                  sc.mode = currentMode;
-                }
-              }
-
-              const sceneWait = new Promise((res) => {
-                pendingSceneResolvers.set(i, res);
-              });
-
-              renderWorker.postMessage({
-                type: 'render-scene',
-                sceneIndex: i,
-                totalScenes: graph.scenes.length,
-                scene: sc,
-                bitmap,
-                subtitleWords: sc.layers.find(l => l.type === 'subtitles')?.words || [],
-                subtitlePreset: document.getElementById('sub-preset').value
-              }, bitmap ? [bitmap] : []);
-
-              await sceneWait;
-            }
-
-            renderWorker.postMessage({ type: 'finalize' });
-          } catch (sceneErr) {
-            reject(sceneErr);
-          }
-        } else if (e.data.type === 'scene-done') {
-          const resolver = pendingSceneResolvers.get(e.data.sceneIndex);
-          if (resolver) {
-            resolver();
-            pendingSceneResolvers.delete(e.data.sceneIndex);
-          }
-        } else if (e.data.type === 'video-chunk') {
-          videoChunks.push(e.data);
-        } else if (e.data.type === 'progress') {
-          const frac = 0.70 + (e.data.sceneIndex / graph.scenes.length) * 0.25;
-          updateProgress(frac, `Encoding Scene ${e.data.sceneIndex + 1}/${graph.scenes.length}...`);
-        } else if (e.data.type === 'finalized') {
-          resolve();
-        } else if (e.data.type === 'error') {
-          reject(new Error(e.data.message));
-        }
-      };
-
-      renderWorker.postMessage({
-        type: 'init',
-        width,
-        height,
-        fps: 24,
-        bitrate: (quality === 'draft') ? 1_500_000 : 3_500_000
-      });
-    });
-
-    updateProgress(0.95, 'Step 5/5: Multiplexing Final MP4...');
-
-    // 6. MP4 Multiplexing
-    const muxerData = await createMuxer({
-      width,
-      height,
-      sampleRate: 48000,
-      numberOfChannels: 2
-    });
-
-    videoChunks.forEach(({ chunk, meta }) => addVideoChunk(muxerData.muxer, chunk, meta));
-    audioChunks.forEach(({ chunk, meta }) => addAudioChunk(muxerData.muxer, chunk, meta));
-
-    const finalBlob = await finalizeMuxer(muxerData);
-
-    updateProgress(1.0, '🎉 Done!');
-
-    // 7. Show Output Player
+    // Show Output Player
     const videoUrl = finalBlob ? URL.createObjectURL(finalBlob) : null;
     const outputBox = document.getElementById('output-box');
     const outputVideo = document.getElementById('output-video');
@@ -679,6 +713,11 @@ async function handleGenerate() {
   } finally {
     btn.disabled = false;
   }
+}
+
+// Attach to window for programmatic / headless / QA agent execution
+if (typeof window !== 'undefined') {
+  window.runDocuforgePipeline = runDocuforgePipeline;
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

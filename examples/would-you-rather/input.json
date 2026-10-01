@@ -1,0 +1,13 @@
+{
+  "mode": "would-you-rather",
+  "optionA": "Speak and understand all 7,000 human languages fluently",
+  "optionB": "Communicate effortlessly with every species of animal on Earth",
+  "voteA": 58,
+  "voteB": 42,
+  "settings": {
+    "subtitlePreset": "bold-pop",
+    "voice": "bm_george",
+    "music": "music/kevin-macleod-carefree.mp3",
+    "quality": "hd"
+  }
+}

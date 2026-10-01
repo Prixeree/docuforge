@@ -1,0 +1,13 @@
+{
+  "mode": "myth-vs-fact",
+  "title": "Do Humans Only Use 10% of Their Brains?",
+  "myth": "Humans only use 10% of their total brain power, leaving 90% dormant.",
+  "fact": "Brain imaging proves that humans utilize virtually 100% of their brain throughout every day.",
+  "explanation": "Even during sleep, complex neural networks across all lobes remain metabolically active, firing billions of synaptic transmissions every second.",
+  "settings": {
+    "subtitlePreset": "classic",
+    "voice": "bm_george",
+    "music": "music/kevin-macleod-the-descent.mp3",
+    "quality": "hd"
+  }
+}

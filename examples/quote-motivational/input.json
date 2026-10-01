@@ -1,0 +1,11 @@
+{
+  "mode": "quote-motivational",
+  "quote": "You have power over your mind, not outside events. Realize this, and you will find strength.",
+  "author": "Marcus Aurelius",
+  "settings": {
+    "subtitlePreset": "handwritten",
+    "voice": "bm_george",
+    "music": "music/leberch-documentary-calm-603945.mp3",
+    "quality": "hd"
+  }
+}

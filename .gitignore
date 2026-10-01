@@ -13,3 +13,6 @@ Thumbs.db
 # Node / Caches
 node_modules/
 *.log
+
+# Large Example Output Videos (Linked via GitHub Releases)
+examples/**/*.mp4

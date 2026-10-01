@@ -1,0 +1,18 @@
+{
+  "mode": "quiz-trivia",
+  "question": "Which planet in our solar system has the shortest day?",
+  "options": [
+    "Earth",
+    "Mars",
+    "Jupiter",
+    "Venus"
+  ],
+  "correctIndex": 2,
+  "funFact": "Jupiter rotates so rapidly that one complete day lasts just 9 hours and 55 minutes!",
+  "settings": {
+    "subtitlePreset": "bold-pop",
+    "voice": "bm_george",
+    "music": "music/kevin-macleod-faster-does-it.mp3",
+    "quality": "hd"
+  }
+}
