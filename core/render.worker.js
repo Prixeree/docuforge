@@ -203,5 +203,6 @@ async function renderSceneNode(msg) {
 
   if (!cancelled) {
     self.postMessage({ type: 'progress', sceneIndex, framePercent: 1.0 });
+    self.postMessage({ type: 'scene-done', sceneIndex });
   }
 }

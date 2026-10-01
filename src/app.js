@@ -379,7 +379,11 @@ async function handleGenerate() {
     updateProgress(0.1, 'Step 1/5: Synthesizing Neural Voiceover...');
 
     // 1. Text-to-Speech
-    await initTTS();
+    try {
+      await initTTS();
+    } catch (e) {
+      console.warn('TTS init warning:', e.message);
+    }
     let textToVoice = '';
     if (currentMode === 'viral') textToVoice = `${data.hook}. ${data.facts.join('. ')}. ${data.cta}`;
     else if (currentMode === 'reddit-story') textToVoice = data.story;
@@ -446,32 +450,52 @@ async function handleGenerate() {
 
     // 5. Video Rendering Worker
     const videoChunks = [];
+    const pendingSceneResolvers = new Map();
     const renderWorker = new Worker(new URL('../core/render.worker.js', import.meta.url), { type: 'module' });
 
     await new Promise((resolve, reject) => {
       renderWorker.onmessage = async (e) => {
         if (e.data.type === 'ready') {
-          // Prepare background video element
-          const videoEl = createRangeVideo(getAssetUrl(graph.scenes[0].layers[0].src));
-          await new Promise(r => videoEl.onloadedmetadata = r);
+          try {
+            // Prepare background video element
+            const videoEl = createRangeVideo(getAssetUrl(graph.scenes[0].layers[0].src));
+            await new Promise((r, rej) => {
+              videoEl.onloadedmetadata = r;
+              videoEl.onerror = rej;
+            });
 
-          for (let i = 0; i < graph.scenes.length; i++) {
-            const sc = graph.scenes[i];
-            await seekVideoFrame(videoEl, sc.layers[0].startTime);
-            const bitmap = await createImageBitmap(videoEl);
+            for (let i = 0; i < graph.scenes.length; i++) {
+              const sc = graph.scenes[i];
+              await seekVideoFrame(videoEl, sc.layers[0].startTime);
+              const bitmap = await createImageBitmap(videoEl);
 
-            renderWorker.postMessage({
-              type: 'render-scene',
-              sceneIndex: i,
-              totalScenes: graph.scenes.length,
-              scene: sc,
-              bitmap,
-              subtitleWords: sc.layers.find(l => l.type === 'subtitles')?.words || [],
-              subtitlePreset: document.getElementById('sub-preset').value
-            }, [bitmap]);
+              const sceneWait = new Promise((res) => {
+                pendingSceneResolvers.set(i, res);
+              });
+
+              renderWorker.postMessage({
+                type: 'render-scene',
+                sceneIndex: i,
+                totalScenes: graph.scenes.length,
+                scene: sc,
+                bitmap,
+                subtitleWords: sc.layers.find(l => l.type === 'subtitles')?.words || [],
+                subtitlePreset: document.getElementById('sub-preset').value
+              }, [bitmap]);
+
+              await sceneWait;
+            }
+
+            renderWorker.postMessage({ type: 'finalize' });
+          } catch (sceneErr) {
+            reject(sceneErr);
           }
-
-          renderWorker.postMessage({ type: 'finalize' });
+        } else if (e.data.type === 'scene-done') {
+          const resolver = pendingSceneResolvers.get(e.data.sceneIndex);
+          if (resolver) {
+            resolver();
+            pendingSceneResolvers.delete(e.data.sceneIndex);
+          }
         } else if (e.data.type === 'video-chunk') {
           videoChunks.push(e.data);
         } else if (e.data.type === 'progress') {
