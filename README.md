@@ -90,19 +90,30 @@ Measured on standard hardware (Apple Silicon M-series & Intel i5 laptop with 8GB
 
 ## 🚀 Quickstart: Generate Your First Video (30 Seconds)
 
-No `npm install`, no heavy Docker containers, no dependencies:
-
+### Option A: Native Node.js (`npm start`)
 ```bash
-# 1. Clone the repository
 git clone https://github.com/docuforge/docuforge.git
 cd docuforge
+npm start
+```
+*DocuForge will launch at `http://localhost:3000` with full HTTP 206 video range streaming support.*
 
-# 2. Serve locally with any static web server
+### Option B: Docker Container (`docker compose up`)
+```bash
+git clone https://github.com/docuforge/docuforge.git
+cd docuforge
+docker compose up -d
+# Or single command: npm run docker:start
+```
+*Runs in a lightweight container exposing `http://localhost:3000`.*
+
+### Option C: Zero-Install Static Server
+```bash
 npx serve .
 # Or Python: python3 -m http.server 3000
 ```
 
-1. Open `http://localhost:3000` in Google Chrome or Edge.
+1. Open `http://localhost:3000` in Google Chrome, Edge, or Brave.
 2. Select any mode (e.g. **⚡ Viral Facts & Hooks** or **💬 Dramatic Reddit Story**).
 3. Click **Generate Video** — watch the live progress bar and download your broadcast-ready MP4!
 

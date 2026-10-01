@@ -1,0 +1,15 @@
+services:
+  docuforge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: docuforge
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - ROOT_DIR=/app
+    volumes:
+      - .:/app/docuforge
+      - ../docuforge-assets:/app/docuforge-assets:ro
+    restart: unless-stopped

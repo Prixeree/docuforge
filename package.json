@@ -1,0 +1,27 @@
+{
+  "name": "docuforge",
+  "version": "0.1.0",
+  "description": "Open-source, free, ultra-lightweight in-browser short-form video generator across 7 pipeline modes",
+  "type": "module",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node tools/dev-server.js",
+    "dev": "node tools/dev-server.js",
+    "export": "node tools/export-examples.js",
+    "docker:build": "docker build -t docuforge .",
+    "docker:start": "docker run -d --name docuforge -p 3000:3000 docuforge",
+    "docker:stop": "docker stop docuforge && docker rm docuforge"
+  },
+  "keywords": [
+    "video-generator",
+    "in-browser",
+    "webcodecs",
+    "canvas2d",
+    "tts",
+    "shorts",
+    "reels",
+    "tiktok"
+  ],
+  "author": "DocuForge Contributors",
+  "license": "MIT"
+}

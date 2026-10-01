@@ -16,7 +16,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
-const ROOT_DIR = '/Volumes/SSD 500gb/Project';
+const SCRIPT_DIR = path.resolve(import.meta.dirname, '..');
+const ROOT_DIR = process.env.ROOT_DIR || (fs.existsSync('/Volumes/SSD 500gb/Project') ? '/Volumes/SSD 500gb/Project' : path.resolve(SCRIPT_DIR, '..'));
 
 const MIME_TYPES = {
   '.html': 'text/html; charset=utf-8',
@@ -63,7 +64,7 @@ const server = http.createServer((req, res) => {
       return;
     }
 
-    const outDir = path.join(ROOT_DIR, 'docuforge', 'examples', mode);
+    const outDir = path.join(SCRIPT_DIR, 'examples', mode);
     fs.mkdirSync(outDir, { recursive: true });
     const outFile = path.join(outDir, 'example.mp4');
     const writeStream = fs.createWriteStream(outFile);
@@ -89,13 +90,12 @@ const server = http.createServer((req, res) => {
     reqPath = '/docuforge/index.html';
   }
 
-  const filePath = path.join(ROOT_DIR, reqPath);
-
-  // Path traversal guard
-  if (!filePath.startsWith(ROOT_DIR)) {
-    res.writeHead(403, { 'Content-Type': 'text/plain' });
-    res.end('403 Forbidden');
-    return;
+  let filePath = path.join(ROOT_DIR, reqPath);
+  if (!fs.existsSync(filePath)) {
+    const directPath = path.join(SCRIPT_DIR, reqPath.replace(/^\/docuforge\/?/, ''));
+    if (fs.existsSync(directPath)) {
+      filePath = directPath;
+    }
   }
 
   fs.stat(filePath, (err, stats) => {
