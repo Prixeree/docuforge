@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DocuForge</title>
+  <style>
+    :root {
+      --bg: #0e0e10;
+      --surface: #1a1a1f;
+      --surface-hover: #2a2a30;
+      --border: #333;
+      --text: #ededed;
+      --text-muted: #999;
+      --accent: #6366f1;
+      --accent-hover: #4f46e5;
+      --error: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+      --radius: 8px;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    h1, h2, h3 { margin-bottom: 1rem; }
+    
+    .header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 24px;
+      gap: 12px;
+    }
+    .badge {
+      background: var(--accent);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .banner {
+      padding: 12px 16px;
+      border-radius: var(--radius);
+      margin-bottom: 20px;
+      display: none;
+      font-weight: 500;
+    }
+    .banner.warning { background: rgba(245, 158, 11, 0.2); border: 1px solid var(--warning); color: var(--warning); }
+    .banner.error { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--error); color: var(--error); display: none; position: fixed; top: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+    .banner.visible { display: block; }
+    
+    .grid { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: 1fr 1fr; }
+    .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    
+    label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.9rem; }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px;
+      border-radius: var(--radius);
+      font-family: inherit;
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    textarea { resize: vertical; min-height: 120px; }
+    
+    .flex-row { display: flex; gap: 12px; align-items: center; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    
+    button {
+      background: var(--surface-hover);
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    button:hover { background: #3a3a40; }
+    button.primary { background: var(--accent); color: white; border: none; }
+    button.primary:hover { background: var(--accent-hover); }
+    button.danger { background: var(--error); color: white; border: none; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    
+    .hint { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Scene List */
+    #scene-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+    .scene-card {
+      display: grid;
+      grid-template-columns: 120px 1fr auto;
+      gap: 16px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 12px;
+      align-items: center;
+    }
+    .scene-thumb {
+      width: 120px;
+      height: 68px;
+      background: #000;
+      border-radius: 4px;
+      object-fit: cover;
+    }
+    .scene-info { overflow: hidden; }
+    .scene-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 0.95rem; margin-bottom: 4px; }
+    .scene-meta { font-size: 0.8rem; color: var(--text-muted); display: flex; gap: 12px; }
+    .scene-actions { display: flex; flex-direction: column; gap: 8px; }
+    .scene-actions select { padding: 4px; font-size: 0.85rem; }
+
+    /* Progress */
+    .progress-section { display: none; margin-top: 24px; }
+    .progress-section.visible { display: block; }
+    .progress-item { margin-bottom: 12px; }
+    .progress-header { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 4px; }
+    .progress-track { background: var(--bg); border: 1px solid var(--border); height: 16px; border-radius: 8px; overflow: hidden; }
+    .progress-fill { background: var(--accent); height: 100%; width: 0%; transition: width 0.2s; }
+    .progress-fill.done { background: var(--success); }
+    #progress-status { font-weight: bold; margin-bottom: 16px; color: var(--accent); }
+
+    /* Output */
+    .output-section { display: none; margin-top: 24px; text-align: center; }
+    .output-section.visible { display: block; }
+    video { max-width: 100%; max-height: 500px; background: #000; border-radius: var(--radius); margin-bottom: 16px; border: 1px solid var(--border); }
+  </style>
+</head>
+<body>
+
+  <div id="error-banner" class="banner error"></div>
+  
+  <div class="header">
+    <h1>DocuForge</h1>
+    <span class="badge">v1.0</span>
+  </div>
+  
+  <div id="hw-banner" class="banner warning">
+    Warning: Hardware encoding for 1080p is not supported on this device. Exports may be slower.
+  </div>
+
+  <div class="grid grid-3">
+    <div class="section">
+      <h3>API Keys</h3>
+      <div class="grid">
+        <div>
+          <label>Pexels API Key <a href="https://www.pexels.com/api/" target="_blank" class="hint">(Get Free)</a></label>
+          <input type="text" id="key-pexels" placeholder="Enter Pexels key">
+        </div>
+        <div>
+          <label>Pixabay API Key <a href="https://pixabay.com/api/docs/" target="_blank" class="hint">(Get Free)</a></label>
+          <input type="text" id="key-pixabay" placeholder="Enter Pixabay key">
+        </div>
+        <div>
+          <label>Gemini API Key <span class="hint">(Optional, for better keywords)</span></label>
+          <input type="text" id="key-gemini" placeholder="Enter Gemini key">
+        </div>
+      </div>
+    </div>
+
+    <div class="section" style="grid-column: span 2;">
+      <h3>Script</h3>
+      <textarea id="script-input" placeholder="Enter your documentary script here. Double newlines separate scenes..."></textarea>
+      <div class="flex-between mt-2">
+        <span id="scene-count" class="hint">0 scenes detected</span>
+        <div class="flex-row">
+          <button id="btn-enhance">Enhance Keywords</button>
+          <button id="btn-parse" class="primary">Parse Script</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="flex-between">
+      <h3>Scenes & Clips</h3>
+      <button id="btn-fetch-clips">Fetch All Clips</button>
+    </div>
+    <div id="scene-list">
+      <!-- Scene cards injected here -->
+      <div class="hint text-center" style="padding: 20px;">Parse script to generate scenes.</div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="section">
+      <h3>Voice & Music</h3>
+      <div class="grid">
+        <div>
+          <label>Voice</label>
+          <select id="voice-select">
+            <option value="bm_george">bm_george (Default)</option>
+            <option value="bm_lewis">bm_lewis</option>
+            <option value="bm_daniel">bm_daniel</option>
+            <option value="am_michael">am_michael</option>
+            <option value="am_adam">am_adam</option>
+            <option value="af_heart">af_heart</option>
+            <option value="af_star">af_star</option>
+            <option value="af_bella">af_bella</option>
+            <option value="bf_emma">bf_emma</option>
+          </select>
+        </div>
+        <div>
+          <label>Speed: <span id="speed-val">0.93</span>x</label>
+          <input type="range" id="speed-slider" min="0.5" max="1.5" step="0.01" value="0.93">
+        </div>
+        <div>
+          <button id="btn-preview-voice">Preview Voice</button>
+        </div>
+        <div>
+          <label>Background Music (Optional)</label>
+          <input type="file" id="music-upload" accept="audio/*">
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Export Settings</h3>
+      <div class="grid">
+        <div>
+          <label>Quality Tier</label>
+          <select id="quality-select">
+            <option value="fullhd">Full HD 1080p</option>
+            <option value="hd" selected>HD 720p</option>
+            <option value="draft">Draft 480p</option>
+          </select>
+        </div>
+        <div>
+          <label>Default Transition</label>
+          <select id="transition-select">
+            <option value="crossfade">Crossfade</option>
+            <option value="slideLeft">Slide Left</option>
+            <option value="slideRight">Slide Right</option>
+            <option value="wipeLeft">Wipe Left</option>
+            <option value="wipeDown">Wipe Down</option>
+            <option value="dipToBlack">Dip to Black</option>
+            <option value="auto">Auto (Random)</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" style="display: flex; justify-content: center; gap: 16px;">
+    <button id="btn-generate" class="primary" style="font-size: 1.2rem; padding: 12px 32px;" disabled>Generate Documentary</button>
+    <button id="btn-cancel" class="danger" style="display: none;">Cancel</button>
+  </div>
+
+  <div id="progress-section" class="section progress-section">
+    <div id="progress-status">Initializing...</div>
+    
+    <div class="progress-item">
+      <div class="progress-header"><span>Script & Setup</span> <span id="pct-script">0%</span></div>
+      <div class="progress-track"><div id="prog-script" class="progress-fill"></div></div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-header"><span>Stock Clips</span> <span id="pct-stock">0%</span></div>
+      <div class="progress-track"><div id="prog-stock" class="progress-fill"></div></div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-header"><span>Voiceover</span> <span id="pct-voice">0%</span></div>
+      <div class="progress-track"><div id="prog-voice" class="progress-fill"></div></div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-header"><span>Audio Mix</span> <span id="pct-audio">0%</span></div>
+      <div class="progress-track"><div id="prog-audio" class="progress-fill"></div></div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-header"><span>Render Video</span> <span id="pct-render">0%</span></div>
+      <div class="progress-track"><div id="prog-render" class="progress-fill"></div></div>
+    </div>
+    <div class="progress-item">
+      <div class="progress-header"><span>Mux & Save</span> <span id="pct-mux">0%</span></div>
+      <div class="progress-track"><div id="prog-mux" class="progress-fill"></div></div>
+    </div>
+  </div>
+
+  <div id="output-section" class="section output-section">
+    <h2>Done!</h2>
+    <video id="output-video" controls></video>
+    <div class="flex-row" style="justify-content: center;">
+      <a id="btn-download" class="button primary" download="docuforge_export.mp4" style="display:inline-block; padding:8px 16px; background:var(--accent); color:white; border-radius:var(--radius);">Download Video</a>
+      <span id="output-size" class="hint" style="align-self: center;"></span>
+    </div>
+    <button id="btn-new" class="mt-2" style="margin-top: 16px;">Create New Video</button>
+  </div>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
